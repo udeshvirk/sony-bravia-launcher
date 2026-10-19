@@ -1,0 +1,29 @@
+# Packages disabled by debloat.sh (pm disable-user --user 0). One per line.
+# --- manufacturer telemetry / analytics
+com.sonyericsson.idd.agent
+tv.samba.ssm
+tv.samba.ssm.ui
+com.sony.dtv.lastaccess
+com.sony.dtv.usercontext
+com.qterics.da.product
+com.sony.dtv.da.service
+# --- manufacturer content & ad services
+com.sony.dtv.promos
+com.sony.dtv.sonyselect
+com.sony.dtv.sonytab
+android.autoinstalls.config.sony.bravia
+com.sony.dtv.demosupport
+com.sony.dtv.multiscreendemo
+com.vewd.core.integration.dia
+# --- preloaded extras
+com.sony.dtv.osat.music
+com.google.android.play.games
+com.sony.dtv.smarthelp
+com.sony.dtv.helpguidecontents
+com.sony.dtv.livingfit
+# --- streaming apps you don't use
+com.amazon.music.tv
+com.gaana.fire_tv
+com.sonypicturescore
+com.google.android.videos
+com.appgeneration.itunerfree

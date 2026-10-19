@@ -1,0 +1,34 @@
+# Packages the debloat script must never disable. debloat.sh refuses any of these.
+# --- TV picture: live TV app, HDMI/tuner inputs, input/source menu
+com.sony.dtv.tvx
+com.sony.dtv.tvinput.external
+com.sony.dtv.tvinput.tuner
+com.sony.dtv.tvinput.provider
+com.sony.dtv.tvinput.hardwaremanager
+com.sony.dtv.tvapi
+com.android.providers.tv
+com.mediatek.backgrounddetection
+# --- remote control, Bluetooth pairing, keyboards
+com.android.bluetooth
+com.google.android.tv.remote.service
+com.sony.dtv.remotecontrolsettings
+com.sony.dtv.irbservice
+com.sony.dtv.ime.chww
+com.sony.dtv.imeproxy
+com.google.android.inputmethod.latin
+# --- Google core
+com.android.vending
+com.google.android.gms
+com.google.android.gsf
+# --- Google Photos screensaver (Ambient Mode) and what it needs
+com.google.android.apps.tv.dreamx
+com.android.dreams.basic
+com.android.systemui
+com.google.android.syncadapters.calendar
+# --- Settings
+com.android.tv.settings
+com.sony.dtv.settings
+com.sony.dtv.settingsprovider
+com.android.providers.settings
+# --- this launcher
+com.udesh.tvhome

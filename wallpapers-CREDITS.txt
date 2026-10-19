@@ -1,0 +1,6 @@
+Wallpapers aren't bundled in this repo (see README "Wallpapers" section) — push your own.
+
+If you use photos from a licensed source that requires attribution (e.g. Unsplash), a simple
+credits file alongside them, one line per image, works well:
+
+wall-01.jpg  Photographer Name  https://unsplash.com/photos/xxxxxxxxxxx

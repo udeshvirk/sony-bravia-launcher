@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Home screen settings. Edit, then run ./build-and-install.sh from the tv-launcher folder.
+-->
+<resources>
+    <!-- Dock: exactly four package names, left to right. -->
+    <string-array name="dock_apps">
+        <item>com.netflix.ninja</item>
+        <item>com.amazon.amazonvideo.livingroom</item>
+        <item>in.startv.hotstar</item>
+        <item>com.google.android.youtube.tv</item>
+    </string-array>
+
+    <!-- Apps never shown in the grid (package names). -->
+    <string-array name="hidden_apps">
+        <item>com.sony.dtv.ecodashboard</item>
+        <item>com.sony.dtv.timers</item>
+        <item>com.sony.dtv.notificationcenter</item>   <!-- BRAVIA notifications -->
+        <item>com.sony.dtv.smartmediaapp</item>       <!-- Media Player (USB drive; VLC plays those files too) -->
+        <item>com.sony.dtv.tvx</item>                 <!-- TV (use the Inputs pill instead) -->
+        <item>com.sony.dtv.seeds.iot</item>           <!-- TV Control with Smart Speakers (keeps working) -->
+    </string-array>
+
+    <!-- Colour remote buttons: package to open. Leave empty to let the key pass through. -->
+    <string name="key_red">org.videolan.vlc</string>
+    <string name="key_green">in.startv.hotstar</string>
+    <string name="key_yellow">com.apple.atve.sony.appletv</string>
+    <string name="key_blue">com.sonyliv</string>
+
+    <!-- While any of these apps is on screen, the colour buttons are left alone
+         (Live TV / HDMI / tuner, HbbTV and teletext use them). -->
+    <string-array name="color_key_passthrough">
+        <item>com.sony.dtv.tvx</item>
+        <item>com.sony.dtv.tvinput.tuner</item>
+        <item>com.sony.dtv.tvinput.external</item>
+        <item>com.sony.dtv.hbbtvplayer</item>
+        <item>com.vewd.core.service</item>
+        <item>com.vewd.core.integration.dia</item>
+    </string-array>
+
+    <!-- Weather: Open-Meteo, no API key. Set to your own location's coordinates
+         (e.g. search "<your city> latitude longitude"). Default below is Null Island (0,0). -->
+    <string name="weather_lat">0.0</string>
+    <string name="weather_lon">0.0</string>
+    <integer name="weather_refresh_minutes">30</integer>
+    <!-- Older than this, the weather row is shown dimmed. -->
+    <integer name="weather_stale_minutes">90</integer>
+
+    <!-- Wallpapers: JPG/PNG files in
+         /sdcard/Android/data/com.udesh.tvhome/files/wallpapers/
+         rotate in name order, changing at most every wallpaper_rotate_hours, and only when
+         the home screen comes back on screen. A single files/wallpaper.jpg is used if the
+         folder is empty. No files = pitch black. See README. -->
+    <string name="wallpaper_file">wallpaper.jpg</string>
+    <string name="wallpaper_dir">wallpapers</string>
+    <integer name="wallpaper_rotate_hours">3</integer>
+
+    <!-- Remote "Apps" button opens the home screen on the app grid (pressing it again goes back to the dock). -->
+    <bool name="apps_button_opens_grid">true</bool>
+
+    <!-- Wake the HDMI-ARC soundbar when an app opens or something starts playing, if it went to
+         standby on its own. Uses Sony's Home Theatre Control panel for ~2 s, then closes it. -->
+    <bool name="soundbar_wake">true</bool>
+</resources>

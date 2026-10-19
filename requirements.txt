@@ -1,0 +1,4 @@
+adb-shell
+rsa
+# Pillow is only needed for tools/sheet.py (optional screenshot-grid helper)
+Pillow

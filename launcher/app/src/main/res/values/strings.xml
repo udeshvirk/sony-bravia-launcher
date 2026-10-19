@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Home</string>
+    <string name="color_key_service_label">Home colour buttons</string>
+    <string name="color_key_service_desc">Opens your chosen apps with the Red, Green, Yellow and Blue remote buttons. Reads only which app is on screen, to leave the buttons alone in Live TV.</string>
+</resources>
