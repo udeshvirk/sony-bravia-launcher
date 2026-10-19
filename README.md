@@ -4,6 +4,9 @@ Built and tested on a Sony BRAVIA 4K VH2 (Android TV 12, SDK 31); other Sony And
 should mostly work the same way, but package names and a few Sony-specific behaviours (noted below)
 may differ.
 
+![Home screen](docs/home.png)
+![App grid](docs/apps.png)
+
 Everything here talks to the TV over Wi-Fi ADB using the Python `adb-shell` package (`./tv`),
 because macOS Local Network privacy blocks the stock `adb` binary. Find your TV's IP in
 **Settings → Network → Status**, then either export it once per shell (`export TV_IP=192.168.1.50`)
@@ -11,6 +14,9 @@ or prefix every command (`TV_IP=192.168.1.50 ./tv shell ...`). Turn on **Develop
 debugging** on the TV first (tap the build number in About seven times to unlock Developer options).
 
 ## Setup
+
+Setting this up yourself by hand: the steps below. Having an AI coding agent (Claude Code or
+similar) do it for you instead: point it at `PROMPT.md`, which is written for that.
 
 ```sh
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
