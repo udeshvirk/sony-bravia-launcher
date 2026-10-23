@@ -4,7 +4,7 @@ import android.content.Context;
 import android.graphics.Typeface;
 import android.util.SparseArray;
 
-/** Outfit (SIL OFL 1.1) variable font, one Typeface per weight. */
+/** Outfit (SIL OFL 1.1) variable font, one Typeface per weight; Press Start 2P (SIL OFL 1.1) for the arcade look. */
 final class Fonts {
     private static final SparseArray<Typeface> cache = new SparseArray<>();
 
@@ -21,5 +21,15 @@ final class Fonts {
         }
         return t;
     }
+    private static Typeface pixel;
+
+    static Typeface pixel(Context c) {
+        if (pixel == null) {
+            try { pixel = Typeface.createFromAsset(c.getAssets(), "fonts/PressStart2P.ttf"); }
+            catch (Exception e) { pixel = Typeface.MONOSPACE; }
+        }
+        return pixel;
+    }
+
     private Fonts() {}
 }

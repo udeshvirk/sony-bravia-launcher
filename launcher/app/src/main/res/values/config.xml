@@ -64,6 +64,10 @@
     <bool name="screensaver_overlay">true</bool>
     <bool name="screensaver_clock">false</bool>
 
+    <!-- Arcade touches: a chomper that runs along the top of the dock to the selected app, eating
+         dots, and a little ghost next to the weather. Your app banners stay as they are. -->
+    <bool name="arcade_touches">false</bool>
+
     <!-- Wallpapers: JPG/PNG files in
          /sdcard/Android/data/com.udesh.tvhome/files/wallpapers/
          rotate in name order, changing at most every wallpaper_rotate_hours, and only when

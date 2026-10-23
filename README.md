@@ -78,6 +78,10 @@ The built-in defaults are in `launcher/app/src/main/res/values/config.xml` (edit
   BRAVIA notifications, Media Player, TV, TV Control with Smart Speakers). Hiding only removes the
   tile; the apps keep working. Delete a line to bring a tile back.
 - **Wallpaper rotation**: `wallpaper_rotate_hours` (3).
+- **Arcade look** (off by default): `arcade_touches` (false). Greeting, clock, date and the big app name in the
+  8-bit Press Start 2P font (SIL OFL 1.1, `assets/fonts/PressStart2P-OFL.txt`), a little chomper
+  that runs along the top of the dock to the selected app eating dots, and a ghost next to the
+  weather. It only animates for a moment when you move; set `false` for the plain look.
 - **Apps button**: `apps_button_opens_grid` (true).
 - **Colour buttons**: `key_red`, `key_green`, `key_yellow`, `key_blue`
   (now Hotstar, Apple TV, VLC, SonyLIV). Empty = the button does nothing special.

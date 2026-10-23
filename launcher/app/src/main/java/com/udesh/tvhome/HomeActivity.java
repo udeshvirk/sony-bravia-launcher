@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.Outline;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -82,6 +83,7 @@ public class HomeActivity extends Activity {
     private ImageView wxIcon;
     private LinearLayout wxRow, menu;
     private CricketCard ckCard;
+    private ChomperView chomper;   // arcade touches (null when off)
     private final View[] pills = new View[3];
     private final List<View> dockCards = new ArrayList<>();
     private RecyclerView grid;
@@ -356,6 +358,13 @@ public class HomeActivity extends Activity {
         LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-2, -2);
         rlp.leftMargin = px(14);
         wxRow.addView(wxRange, rlp);
+        if (Config.bool(HomeActivity.this, R.bool.arcade_touches)) {
+            ImageView ghost = new ImageView(this);
+            ghost.setImageResource(R.drawable.ic_ghost);
+            LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(px(20), px(20));
+            glp.leftMargin = px(14);
+            wxRow.addView(ghost, glp);
+        }
         wxRow.setVisibility(View.GONE);
         LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(-2, -2);
         wlp.topMargin = px(12);
@@ -393,6 +402,7 @@ public class HomeActivity extends Activity {
         // big title of the focused dock app
         title = text(46, 300, 0xF2FFFFFF);
         title.setGravity(Gravity.BOTTOM | Gravity.START);
+        if (Config.bool(HomeActivity.this, R.bool.arcade_touches)) arcadeText();
         page.addView(title, at(bandX + px(6), bandY - px(14) - titleH, bandW, titleH));
 
         // dock band
@@ -403,7 +413,19 @@ public class HomeActivity extends Activity {
         bandBg.setStroke(Math.max(1, px(1)), 0x12FFFFFF);
         bandBg.setCornerRadius(px(30));
         band.setBackground(bandBg);
+        if (Config.bool(HomeActivity.this, R.bool.arcade_touches)) {
+            // neon maze corridor around the dock (behind the bar, drawn once)
+            int o = px(14);
+            page.addView(new MazeBorderView(this, px(30), o), at(bandX - o, bandY - o, bandW + 2 * o, bandH + 2 * o));
+            bandBg.setStroke(0, 0);
+        }
         page.addView(band, at(bandX, bandY, bandW, bandH));
+        // arcade touches: dots + chomper in the band's top margin, above the app banners
+        if (Config.bool(HomeActivity.this, R.bool.arcade_touches)) {
+            chomper = new ChomperView(this);
+            chomper.setLane(bandPadX, bandW - bandPadX);
+            page.addView(chomper, at(bandX, bandY, bandW, bandPadY));
+        }
 
         // app grid below the screen
         grid = new RecyclerView(this);
@@ -667,6 +689,10 @@ public class HomeActivity extends Activity {
             }
         }
         if (rect != null) hl.moveTo(rect, radius, animate);
+        if (chomper != null && !repo.dock.isEmpty()) {
+            int i = clamp(dockIdx, 0, repo.dock.size() - 1);
+            chomper.moveTo(bandPadX + i * (tileW + gap) + tileW / 2f, animate);
+        }
 
         // page position: hero at rest, or scrolled so the focused grid row sits at the anchor
         float ty = zone == GRID ? -(gridTop + (gridIdx / COLS) * rowH - gridAnchor) : 0f;
@@ -939,6 +965,23 @@ public class HomeActivity extends Activity {
     }
 
     // ------------------------------------------------------------------ clock, weather, wifi, wallpaper
+
+    /** Arcade touches: greeting, clock, date and the big app name in an 8-bit font
+     *  (sizes on its 8 px grid so the pixels stay crisp). */
+    private void arcadeText() {
+        Typeface px = Fonts.pixel(this);
+        for (TextView t : new TextView[]{greeting, clock, date, title}) {
+            t.setTypeface(px);
+            t.setLetterSpacing(0f);
+            t.setAllCaps(true);
+        }
+        greeting.setTextSize(12);
+        date.setTextSize(12);
+        clock.setTextSize(64);
+        title.setTextSize(32);
+        greeting.setPadding(0, 0, 0, px(10));
+        date.setPadding(0, px(14), 0, 0);
+    }
 
     private void updateClock() {
         Calendar c = Calendar.getInstance();

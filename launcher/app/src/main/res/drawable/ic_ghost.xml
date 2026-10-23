@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Little arcade ghost shown next to the weather (arcade_touches). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="40" android:viewportHeight="40">
+    <path android:fillColor="#FFFFB8DE" android:pathData="M4,38 L4,18 A16,16 0 0,1 36,18 L36,38 L31,33 L26,38 L20,33 L14,38 L9,33 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M9,18 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z M21,18 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z"/>
+    <path android:fillColor="#FF1F3BFF" android:pathData="M13.5,19 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 Z M25.5,19 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 Z"/>
+</vector>

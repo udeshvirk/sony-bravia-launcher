@@ -36,6 +36,7 @@
   "screensaver_cricket_refresh_minutes": 5,
   "screensaver_overlay": true,
   "screensaver_clock": false,
+  "arcade_touches": false,
   "wallpaper_file": "wallpaper.jpg",
   "wallpaper_dir": "wallpapers",
   "wallpaper_rotate_hours": 3,
