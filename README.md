@@ -63,8 +63,14 @@ If you ever factory-reset, all of this is undone automatically.
 
 ## Change the home screen
 
-All settings are in `launcher/app/src/main/res/values/config.xml`. Edit, then run
-`./build-and-install.sh`.
+**Quick way (no rebuild):** edit `config.json` in this folder (start from `config.example.json`;
+same names as `config.xml`, leave out anything you don't want to change), then run
+`./config.sh push`. It copies the file to the TV and restarts the launcher. `./config.sh pull`
+fetches what's on the TV, `./config.sh reset` goes back to the built-in defaults. `config.json` is
+git-ignored, so your location and choices stay out of the repo.
+
+The built-in defaults are in `launcher/app/src/main/res/values/config.xml` (edit, then
+`./build-and-install.sh`).
 
 - **Dock order**: `dock_apps`, four package names left to right
   (now Netflix, Prime Video, JioHotstar, YouTube).
@@ -197,6 +203,22 @@ app is on screen, so it can leave the buttons alone in the Sony TV app, HbbTV an
 
 Note: `input keyevent` from ADB cannot test these buttons, because shell-injected keys skip
 accessibility filtering. Use the real remote.
+
+## Live cricket
+
+A mini scorecard (top right of the home screen) for India men's matches and IPL: live score
+with the batters at the crease and the current bowler, the next match if it starts within 18
+hours, or the result for a while afterwards. Hidden when there's nothing to show. Data comes from
+CricketData.org; the free key goes in `launcher/local.properties` as `cricket.apiKey=...`
+(git-ignored). Free plan = 100 requests a day: it only fetches while the home screen or
+screensaver is on screen, every 4 min during a live match (5 on the screensaver; that match only) and every 30 min
+otherwise, and pauses for the day if the limit is hit. Settings: `cricket_enabled`,
+`cricket_india_women`, `cricket_live_refresh_minutes`, `screensaver_cricket_refresh_minutes`,
+`cricket_idle_refresh_minutes`.
+
+While a match is live, a small score card also appears on the photo screensaver, just above
+Ambient Mode's own clock (`screensaver_overlay`). `screensaver_clock: true` draws our own big
+clock + date bottom-left instead (then turn Ambient Mode's clock off in its settings).
 
 ## Screensaver (Google Photos / Ambient Mode)
 

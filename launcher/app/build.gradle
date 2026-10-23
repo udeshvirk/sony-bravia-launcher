@@ -1,4 +1,8 @@
 plugins { id 'com.android.application' }
+// Secrets live in launcher/local.properties (git-ignored), e.g.  cricket.apiKey=xxxx
+def localProps = new Properties()
+def lp = rootProject.file('local.properties')
+if (lp.exists()) lp.withInputStream { localProps.load(it) }
 android {
     namespace 'com.udesh.tvhome'
     compileSdk 34
@@ -8,6 +12,7 @@ android {
         targetSdk 34
         versionCode 1
         versionName '1.0'
+        resValue 'string', 'cricket_api_key', localProps.getProperty('cricket.apiKey', '')
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     buildTypes { debug { minifyEnabled false } }

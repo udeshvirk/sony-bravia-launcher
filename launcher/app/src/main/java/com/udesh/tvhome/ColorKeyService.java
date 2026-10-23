@@ -40,15 +40,18 @@ public class ColorKeyService extends AccessibilityService {
     private final boolean[] launchedOnDown = new boolean[4];
 
     @Override protected void onServiceConnected() {
-        map[0] = getString(R.string.key_red).trim();
-        map[1] = getString(R.string.key_green).trim();
-        map[2] = getString(R.string.key_yellow).trim();
-        map[3] = getString(R.string.key_blue).trim();
-        passthrough = new HashSet<>(Arrays.asList(getResources().getStringArray(R.array.color_key_passthrough)));
+        map[0] = Config.str(ColorKeyService.this, R.string.key_red).trim();
+        map[1] = Config.str(ColorKeyService.this, R.string.key_green).trim();
+        map[2] = Config.str(ColorKeyService.this, R.string.key_yellow).trim();
+        map[3] = Config.str(ColorKeyService.this, R.string.key_blue).trim();
+        passthrough = new HashSet<>(Arrays.asList(Config.array(ColorKeyService.this, R.array.color_key_passthrough)));
         Log.i(TAG, "connected; map=" + Arrays.toString(map));
-        if (getResources().getBoolean(R.bool.apps_button_opens_grid)) startAppsWatcher();
-        if (getResources().getBoolean(R.bool.soundbar_wake)) startSoundbarWake();
+        if (Config.bool(ColorKeyService.this, R.bool.apps_button_opens_grid)) startAppsWatcher();
+        if (Config.bool(ColorKeyService.this, R.bool.soundbar_wake)) startSoundbarWake();
+        if (Config.bool(ColorKeyService.this, R.bool.screensaver_overlay)) { saver = new ScreensaverOverlay(this); saver.start(); }
     }
+
+    private ScreensaverOverlay saver;
 
     // ---- Soundbar wake -------------------------------------------------------------------------
     // The soundbar (HDMI ARC) goes to standby on its own after a while of silence, and the TV does
@@ -234,6 +237,7 @@ public class ColorKeyService extends AccessibilityService {
         if (p != null) p.destroy();
         // Release everything, so an old copy of the service can never act again after a reinstall.
         main.removeCallbacksAndMessages(null);
+        if (saver != null) { saver.stop(); saver = null; }
         if (am != null) {
             if (playCb != null) am.unregisterAudioPlaybackCallback(playCb);
             if (devCb != null) am.unregisterAudioDeviceCallback(devCb);
@@ -252,7 +256,7 @@ public class ColorKeyService extends AccessibilityService {
     @Override public void onInterrupt() {}
 
     @Override protected boolean onKeyEvent(KeyEvent ev) {
-        if (ev.getKeyCode() == KeyEvent.KEYCODE_ALL_APPS && getResources().getBoolean(R.bool.apps_button_opens_grid)) {
+        if (ev.getKeyCode() == KeyEvent.KEYCODE_ALL_APPS && Config.bool(ColorKeyService.this, R.bool.apps_button_opens_grid)) {
             // The system sends this to Settings (the only system home left), which ignores it.
             if (ev.getAction() == KeyEvent.ACTION_UP) {
                 Intent i = new Intent(HomeActivity.ACTION_SHOW_APPS).setClass(this, HomeActivity.class)

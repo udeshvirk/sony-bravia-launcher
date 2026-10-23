@@ -22,3 +22,6 @@ launcher/.idea/
 # OS cruft
 .DS_Store
 tools/scan-lg.py
+
+# personal settings pushed to the TV (start from config.example.json)
+config.json

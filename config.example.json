@@ -1,0 +1,44 @@
+{
+  "dock_apps": [
+    "com.netflix.ninja",
+    "com.amazon.amazonvideo.livingroom",
+    "in.startv.hotstar",
+    "com.google.android.youtube.tv"
+  ],
+  "hidden_apps": [
+    "com.sony.dtv.ecodashboard",
+    "com.sony.dtv.timers",
+    "com.sony.dtv.notificationcenter",
+    "com.sony.dtv.smartmediaapp",
+    "com.sony.dtv.tvx",
+    "com.sony.dtv.seeds.iot"
+  ],
+  "key_red": "org.videolan.vlc",
+  "key_green": "in.startv.hotstar",
+  "key_yellow": "com.apple.atve.sony.appletv",
+  "key_blue": "com.sonyliv",
+  "color_key_passthrough": [
+    "com.sony.dtv.tvx",
+    "com.sony.dtv.tvinput.tuner",
+    "com.sony.dtv.tvinput.external",
+    "com.sony.dtv.hbbtvplayer",
+    "com.vewd.core.service",
+    "com.vewd.core.integration.dia"
+  ],
+  "weather_lat": 0.0,
+  "weather_lon": 0.0,
+  "weather_refresh_minutes": 30,
+  "weather_stale_minutes": 90,
+  "cricket_enabled": true,
+  "cricket_india_women": false,
+  "cricket_live_refresh_minutes": 4,
+  "cricket_idle_refresh_minutes": 30,
+  "screensaver_cricket_refresh_minutes": 5,
+  "screensaver_overlay": true,
+  "screensaver_clock": false,
+  "wallpaper_file": "wallpaper.jpg",
+  "wallpaper_dir": "wallpapers",
+  "wallpaper_rotate_hours": 3,
+  "apps_button_opens_grid": true,
+  "soundbar_wake": true
+}

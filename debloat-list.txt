@@ -27,3 +27,16 @@ com.gaana.fire_tv
 com.sonypicturescore
 com.google.android.videos
 com.appgeneration.itunerfree
+# --- added 2026-10-23 from CleanYourTV's BRAVIA VH-series lists
+com.google.android.feedback
+com.sony.dtv.sonybugreportsys
+com.sony.dtv.demosystemsupport
+com.sony.dtv.customersupport
+com.sony.dtv.b2b.hotelmode
+com.sony.dtv.b2b.rs232csupport
+com.sony.dtv.accessibility.tutorial
+com.sony.dtv.gestureapp
+# DLNA media server/renderer (Chromecast is separate and stays)
+com.sonyericsson.dlna
+com.sony.huey.dlna.module
+com.sony.huey.dlna.renderersettings

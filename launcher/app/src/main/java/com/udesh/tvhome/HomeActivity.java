@@ -67,6 +67,7 @@ public class HomeActivity extends Activity {
 
     private final AppRepo repo = new AppRepo();
     private Weather weather;
+    private Cricket cricket;
     private SharedPreferences prefs;
     private final Handler h = new Handler(Looper.getMainLooper());
 
@@ -80,6 +81,7 @@ public class HomeActivity extends Activity {
     private TextView greeting, clock, date, title, wxTemp, wxRange, wifiText;
     private ImageView wxIcon;
     private LinearLayout wxRow, menu;
+    private CricketCard ckCard;
     private final View[] pills = new View[3];
     private final List<View> dockCards = new ArrayList<>();
     private RecyclerView grid;
@@ -118,6 +120,7 @@ public class HomeActivity extends Activity {
         prefs = getSharedPreferences("home", MODE_PRIVATE);
         lastApp = prefs.getString("lastApp", null);
         weather = new Weather(this);
+        cricket = new Cricket(this);
         metrics();
         buildUi();
         loadApps();
@@ -184,13 +187,19 @@ public class HomeActivity extends Activity {
         startWifiUpdates();
         // weather: fetch if the cache is old, then every N minutes while visible
         renderWeather(weather.cached());
-        long refresh = getResources().getInteger(R.integer.weather_refresh_minutes) * 60_000L;
+        long refresh = Config.integer(HomeActivity.this, R.integer.weather_refresh_minutes) * 60_000L;
         long age = weather.ageMs();
         if (age >= refresh) {
             weather.fetch(this::renderWeather);
             h.postDelayed(weatherTick, refresh);
         } else {
             h.postDelayed(weatherTick, refresh - age);
+        }
+        // cricket: same idea, faster while a match is live
+        renderCricket(cricket.cached());
+        if (cricket.enabled()) {
+            long wait = cricketInterval() - cricket.ageMs();
+            if (wait <= 0) cricketTick.run(); else h.postDelayed(cricketTick, wait);
         }
         page.post(() -> applyFocus(false));
     }
@@ -200,6 +209,7 @@ public class HomeActivity extends Activity {
         if (reordering) { reordering = false; hl.setReorderMode(false); }
         unregisterReceiver(timeReceiver);
         h.removeCallbacks(weatherTick);
+        h.removeCallbacks(cricketTick);
         stopWifiUpdates();
         super.onPause();
     }
@@ -207,9 +217,29 @@ public class HomeActivity extends Activity {
     private final Runnable weatherTick = new Runnable() {
         @Override public void run() {
             weather.fetch(HomeActivity.this::renderWeather);
-            h.postDelayed(this, getResources().getInteger(R.integer.weather_refresh_minutes) * 60_000L);
+            h.postDelayed(this, Config.integer(HomeActivity.this, R.integer.weather_refresh_minutes) * 60_000L);
         }
     };
+
+    private final Runnable cricketTick = new Runnable() {
+        @Override public void run() {
+            h.removeCallbacks(this);
+            cricket.fetch(d -> {
+                renderCricket(d);
+                // reschedule from the new state (live -> fast, otherwise slow)
+                h.removeCallbacks(cricketTick);
+                if (resumed) h.postDelayed(cricketTick, cricketInterval());
+            });
+            // fallback if the fetch fails (no callback): try again on the slow interval
+            h.postDelayed(this, Config.integer(HomeActivity.this, R.integer.cricket_idle_refresh_minutes) * 60_000L);
+        }
+    };
+
+    private long cricketInterval() {
+        Cricket.Data d = cricket.cached();
+        boolean live = d != null && d.state == Cricket.LIVE;
+        return Config.integer(HomeActivity.this, live ? R.integer.cricket_live_refresh_minutes : R.integer.cricket_idle_refresh_minutes) * 60_000L;
+    }
 
     private final BroadcastReceiver timeReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context c, Intent i) { updateClock(); }
@@ -330,6 +360,7 @@ public class HomeActivity extends Activity {
         LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(-2, -2);
         wlp.topMargin = px(12);
         tl.addView(wxRow, wlp);
+
         page.addView(tl, at(bandX + px(4), px(34), -2, -2));
 
         // pills (top right)
@@ -350,6 +381,14 @@ public class HomeActivity extends Activity {
         plp.topMargin = px(36);
         plp.rightMargin = sw - (bandX + bandW);
         page.addView(pillRow, plp);
+        // cricket mini scorecard (top right, under the pills)
+        ckCard = new CricketCard(this);
+        ckCard.setVisibility(View.GONE);
+        FrameLayout.LayoutParams cklp = new FrameLayout.LayoutParams(px(400), -2);
+        cklp.gravity = Gravity.TOP | Gravity.END;
+        cklp.topMargin = px(36 + 40 + 16);
+        cklp.rightMargin = sw - (bandX + bandW);
+        page.addView(ckCard, cklp);
 
         // big title of the focused dock app
         title = text(46, 300, 0xF2FFFFFF);
@@ -916,8 +955,20 @@ public class HomeActivity extends Activity {
         wxIcon.setImageResource(Weather.icon(d.code, d.day));
         wxTemp.setText(String.format(Locale.ROOT, "%d°", Math.round(d.temp)));
         wxRange.setText(String.format(Locale.ROOT, "H %d°   L %d°", Math.round(d.hi), Math.round(d.lo)));
-        long stale = getResources().getInteger(R.integer.weather_stale_minutes) * 60_000L;
+        long stale = Config.integer(HomeActivity.this, R.integer.weather_stale_minutes) * 60_000L;
         wxRow.setAlpha(System.currentTimeMillis() - d.time > stale ? 0.4f : 1f);
+    }
+
+    private void renderCricket(Cricket.Data d) {
+        long age = d == null ? Long.MAX_VALUE : System.currentTimeMillis() - d.time;
+        if (d == null || d.state == Cricket.NONE || d.teams.size() < 2 || !cricket.enabled() || age > 24 * 3600_000L) {
+            ckCard.setVisibility(View.GONE);
+            return;
+        }
+        ckCard.bind(d);
+        ckCard.setVisibility(View.VISIBLE);
+        // a live score that hasn't updated for 15 min is shown dimmed
+        ckCard.setAlpha(d.state == Cricket.LIVE && age > 15 * 60_000L ? 0.45f : 1f);
     }
 
     private void startWifiUpdates() {
@@ -958,16 +1009,16 @@ public class HomeActivity extends Activity {
 
     /** Picks the wallpaper: rotates through files/wallpapers/ every N hours, else files/wallpaper.jpg. */
     private File pickWallpaper() {
-        File dir = new File(getExternalFilesDir(null), getString(R.string.wallpaper_dir));
+        File dir = new File(getExternalFilesDir(null), Config.str(HomeActivity.this, R.string.wallpaper_dir));
         if (!dir.exists()) dir.mkdirs();
         File[] fs = dir.listFiles((d, n) -> n.toLowerCase(Locale.ROOT).matches(".*\\.(jpe?g|png|webp)$"));
         if (fs == null || fs.length == 0) {
-            File single = new File(getExternalFilesDir(null), getString(R.string.wallpaper_file));
+            File single = new File(getExternalFilesDir(null), Config.str(HomeActivity.this, R.string.wallpaper_file));
             return single.exists() ? single : null;
         }
         java.util.Arrays.sort(fs);
         long now = System.currentTimeMillis();
-        long every = getResources().getInteger(R.integer.wallpaper_rotate_hours) * 3_600_000L;
+        long every = Config.integer(HomeActivity.this, R.integer.wallpaper_rotate_hours) * 3_600_000L;
         int idx = prefs.getInt("wallIdx", -1);
         if (idx < 0 || idx >= fs.length || now - prefs.getLong("wallTime", 0) >= every) {
             idx = (idx + 1) % fs.length;

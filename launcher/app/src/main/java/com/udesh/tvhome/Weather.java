@@ -52,7 +52,7 @@ final class Weather {
     void fetch(Listener l) {
         if (fetching) return;
         fetching = true;
-        String lat = ctx.getString(R.string.weather_lat), lon = ctx.getString(R.string.weather_lon);
+        String lat = Config.str(ctx, R.string.weather_lat), lon = Config.str(ctx, R.string.weather_lon);
         new Thread(() -> {
             Data d = null;
             HttpURLConnection con = null;

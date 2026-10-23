@@ -46,6 +46,24 @@
     <!-- Older than this, the weather row is shown dimmed. -->
     <integer name="weather_stale_minutes">90</integer>
 
+    <!-- Live cricket (CricketData.org, free plan = 100 requests a day). The API key goes in
+         launcher/local.properties as  cricket.apiKey=...  (kept out of git). No key = no score row.
+         Shows India men's matches and IPL; refreshes only while the home screen is on screen. -->
+    <bool name="cricket_enabled">true</bool>
+    <!-- Also show India Women's matches. -->
+    <bool name="cricket_india_women">false</bool>
+    <integer name="cricket_live_refresh_minutes">4</integer>
+    <integer name="cricket_idle_refresh_minutes">30</integer>
+    <!-- On the screensaver (which can run for hours) the live score refreshes a bit slower. -->
+    <integer name="screensaver_cricket_refresh_minutes">5</integer>
+
+    <!-- Screensaver: while an India/IPL match is live, a small score card sits above Google's
+         ambient-mode clock (bottom right) on top of the photo screensaver. Nothing otherwise.
+         screensaver_clock=true instead draws our own big clock + date bottom-left (turn ambient
+         mode's own clock off then, in its settings). -->
+    <bool name="screensaver_overlay">true</bool>
+    <bool name="screensaver_clock">false</bool>
+
     <!-- Wallpapers: JPG/PNG files in
          /sdcard/Android/data/com.udesh.tvhome/files/wallpapers/
          rotate in name order, changing at most every wallpaper_rotate_hours, and only when

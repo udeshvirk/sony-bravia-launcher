@@ -51,11 +51,11 @@ final class AppRepo {
         dock.clear();
         grid.clear();
         Set<String> used = new HashSet<>();
-        for (String p : c.getResources().getStringArray(R.array.dock_apps)) {
+        for (String p : Config.array(c, R.array.dock_apps)) {
             App a = all.get(p);
             if (a != null && used.add(p)) dock.add(a);
         }
-        used.addAll(Arrays.asList(c.getResources().getStringArray(R.array.hidden_apps)));
+        used.addAll(Arrays.asList(Config.array(c, R.array.hidden_apps)));
         for (App a : all.values()) if (!used.contains(a.pkg)) grid.add(a);
         grid.sort((x, y) -> x.label.toLowerCase(Locale.ROOT).compareTo(y.label.toLowerCase(Locale.ROOT)));
 
