@@ -1,7 +1,6 @@
 # local build tooling / env
 android-sdk/
 .venv/
-lg/
 
 # downloaded/generated, not source
 dl-apk/
@@ -21,7 +20,6 @@ launcher/.idea/
 
 # OS cruft
 .DS_Store
-tools/scan-lg.py
 
 # personal settings pushed to the TV (start from config.example.json)
 config.json

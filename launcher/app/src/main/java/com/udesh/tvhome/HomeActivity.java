@@ -84,7 +84,11 @@ public class HomeActivity extends Activity {
     private LinearLayout wxRow, menu;
     private CricketCard ckCard;
     private ChomperView chomper;   // arcade touches (null when off)
-    private final View[] pills = new View[3];
+    private View[] pills;
+    private int[] pillActions;
+    private static final int P_INPUTS = 0, P_WIFI = 1, P_SETTINGS = 2, P_KIDS = 3, P_PARENT = 4;
+    private boolean kids;          // kids mode: only kids_apps, Parent pill + PIN to leave
+    private PinPad pinPad;
     private final List<View> dockCards = new ArrayList<>();
     private RecyclerView grid;
     private GridAdapter adapter;
@@ -123,6 +127,7 @@ public class HomeActivity extends Activity {
         lastApp = prefs.getString("lastApp", null);
         weather = new Weather(this);
         cricket = new Cricket(this);
+        kids = Kids.on(this);
         metrics();
         buildUi();
         loadApps();
@@ -157,7 +162,8 @@ public class HomeActivity extends Activity {
         // Home pressed twice quickly while already on the home screen: jump back into the last
         // app you opened, instead of just re-focusing the dock.
         long now = SystemClock.elapsedRealtime();
-        boolean doubleTap = visible && lastApp != null && (now - lastHomeMs) < HOME_DOUBLE_MS;
+        boolean doubleTap = visible && lastApp != null && (now - lastHomeMs) < HOME_DOUBLE_MS
+                && (!kids || Kids.allowedApp(this, lastApp));
         lastHomeMs = now;
         if (doubleTap) {
             lastHomeMs = 0;
@@ -376,11 +382,20 @@ public class HomeActivity extends Activity {
         LinearLayout pillRow = new LinearLayout(this);
         pillRow.setOrientation(LinearLayout.HORIZONTAL);
         pillRow.setClipChildren(false);
-        pills[0] = pill(R.drawable.ic_input, "Inputs");
-        pills[1] = pill(R.drawable.ic_wifi, "Wi-Fi");
-        wifiText = (TextView) ((ViewGroup) pills[1]).getChildAt(1);
-        pills[2] = pill(R.drawable.ic_settings, "Settings");
-        for (int i = 0; i < 3; i++) {
+        if (kids) {
+            pills = new View[]{pill(R.drawable.ic_lock, "Parent")};
+            pillActions = new int[]{P_PARENT};
+        } else {
+            boolean k = Kids.available(this);
+            pills = new View[k ? 4 : 3];
+            pillActions = k ? new int[]{P_INPUTS, P_WIFI, P_SETTINGS, P_KIDS} : new int[]{P_INPUTS, P_WIFI, P_SETTINGS};
+            pills[0] = pill(R.drawable.ic_input, "Inputs");
+            pills[1] = pill(R.drawable.ic_wifi, "Wi-Fi");
+            wifiText = (TextView) ((ViewGroup) pills[1]).getChildAt(1);
+            pills[2] = pill(R.drawable.ic_settings, "Settings");
+            if (k) pills[3] = pill(R.drawable.ic_kids, "Kids");
+        }
+        for (int i = 0; i < pills.length; i++) {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, px(40));
             if (i > 0) lp.leftMargin = px(12);
             pillRow.addView(pills[i], lp);
@@ -548,7 +563,7 @@ public class HomeActivity extends Activity {
 
     private void onLongPressCenter() {
         longPressFired = true;
-        if (zone != DOCK && zone != GRID) return;
+        if (kids || (zone != DOCK && zone != GRID)) return;
         if ((zone == DOCK && repo.dock.size() < 2) || (zone == GRID && repo.grid.size() < 2)) return;
         reordering = true;
         hl.setReorderMode(true);
@@ -606,7 +621,7 @@ public class HomeActivity extends Activity {
     private void restoreFocus() {
         int z = prefs.getInt("zone", DOCK);
         String pkg = prefs.getString("pkg", "");
-        topIdx = prefs.getInt("top", 0);
+        topIdx = clamp(prefs.getInt("top", 0), 0, pills.length - 1);
         zone = repo.dock.isEmpty() ? TOP : DOCK;
         for (int i = 0; i < repo.dock.size(); i++) if (repo.dock.get(i).pkg.equals(pkg)) { dockIdx = i; zone = DOCK; }
         if (z == GRID) for (int i = 0; i < repo.grid.size(); i++) if (repo.grid.get(i).pkg.equals(pkg)) { gridIdx = i; zone = GRID; }
@@ -658,6 +673,7 @@ public class HomeActivity extends Activity {
         float radius = px(16);
         switch (zone) {
             case TOP: {
+                topIdx = clamp(topIdx, 0, pills.length - 1);
                 target = pills[topIdx];
                 setScaled(target, PILL_SCALE);
                 rect = scaled(rectInPage(target), PILL_SCALE, px(3));
@@ -737,6 +753,7 @@ public class HomeActivity extends Activity {
     // ------------------------------------------------------------------ keys
 
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
+        if (pinPad != null) return pinPad.onKey(e);
         int k = e.getKeyCode();
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         switch (k) {
@@ -838,9 +855,13 @@ public class HomeActivity extends Activity {
     private void activate() {
         switch (zone) {
             case TOP:
-                if (topIdx == 0) showMenu();
-                else if (topIdx == 1) start(new Intent(Settings.ACTION_WIFI_SETTINGS));
-                else start(new Intent(Settings.ACTION_SETTINGS));
+                switch (pillActions[clamp(topIdx, 0, pillActions.length - 1)]) {
+                    case P_INPUTS: showMenu(); break;
+                    case P_WIFI: start(new Intent(Settings.ACTION_WIFI_SETTINGS)); break;
+                    case P_SETTINGS: start(new Intent(Settings.ACTION_SETTINGS)); break;
+                    case P_KIDS: setKids(true); break;
+                    case P_PARENT: showPinPad(); break;
+                }
                 break;
             case DOCK:
                 launch(repo.dock.get(dockIdx).pkg);
@@ -858,7 +879,33 @@ public class HomeActivity extends Activity {
         }
     }
 
+    // ------------------------------------------------------------------ kids mode
+
+    private void setKids(boolean on) {
+        Kids.set(this, on);
+        zone = DOCK; dockIdx = 0; gridIdx = 0; topIdx = 0;
+        recreate();   // rebuild pills, dock and grid for the new mode
+    }
+
+    private void showPinPad() {
+        if (pinPad != null) return;
+        pinPad = new PinPad(this, new PinPad.Listener() {
+            @Override public void onPinOk() { hidePinPad(); setKids(false); }
+            @Override public void onPinCancel() { hidePinPad(); }
+        });
+        root.addView(pinPad, new FrameLayout.LayoutParams(-1, -1));
+        pinPad.setAlpha(0f);
+        pinPad.animate().alpha(1f).setDuration(180).start();
+    }
+
+    private void hidePinPad() {
+        if (pinPad == null) return;
+        root.removeView(pinPad);
+        pinPad = null;
+    }
+
     private void launch(String pkg) {
+        if (kids && !Kids.allowedApp(this, pkg)) return;
         Intent i = AppRepo.launchIntent(this, pkg);
         if (i == null) return;
         start(i);
@@ -986,7 +1033,8 @@ public class HomeActivity extends Activity {
     private void updateClock() {
         Calendar c = Calendar.getInstance();
         int hr = c.get(Calendar.HOUR_OF_DAY);
-        greeting.setText(hr >= 5 && hr < 12 ? "Good morning" : hr >= 12 && hr < 17 ? "Good afternoon" : "Good evening");
+        if (kids) greeting.setText(Kids.name(this).isEmpty() ? "Kids mode" : "Hi " + Kids.name(this) + "!");
+        else greeting.setText(hr >= 5 && hr < 12 ? "Good morning" : hr >= 12 && hr < 17 ? "Good afternoon" : "Good evening");
         clock.setText(DateFormat.format(DateFormat.is24HourFormat(this) ? "HH:mm" : "h:mm", c));
         date.setText(DateFormat.format("EEEE, d MMMM", c));
         renderWeather(weather.cached());
@@ -1003,6 +1051,7 @@ public class HomeActivity extends Activity {
     }
 
     private void renderCricket(Cricket.Data d) {
+        if (kids) { ckCard.setVisibility(View.GONE); return; }
         long age = d == null ? Long.MAX_VALUE : System.currentTimeMillis() - d.time;
         if (d == null || d.state == Cricket.NONE || d.teams.size() < 2 || !cricket.enabled() || age > 24 * 3600_000L) {
             ckCard.setVisibility(View.GONE);
@@ -1044,9 +1093,9 @@ public class HomeActivity extends Activity {
                 if (ssid != null && !ssid.contains("unknown ssid")) label = ssid.replace("\"", "");
             }
         }
-        if (!label.contentEquals(wifiText.getText())) {
+        if (wifiText != null && !label.contentEquals(wifiText.getText())) {
             wifiText.setText(label);
-            if (zone == TOP || zone == MENU) pills[1].post(() -> applyFocus(false));
+            if (zone == TOP || zone == MENU) pills[0].post(() -> applyFocus(false));
         }
     }
 

@@ -13,6 +13,9 @@ Before touching anything, get from the human:
 - Which 4 apps they want docked, and whether they want the Red/Green/Yellow/Blue remote buttons
   mapped to specific apps (ask which, if so).
 - Their city, for the weather widget (or skip it — it defaults off until coordinates are set).
+- Optional extras: live cricket (India/IPL; needs a free CricketData.org API key from them),
+  kids mode (which apps a child may use, a 4-digit parent PIN, the child's name), the arcade look
+  (off by default).
 - Confirm this is **their own TV** and they're fine with disabling ~20 Sony/Google system packages
   (all reversible — see `restore.sh`) and installing a replacement home screen app.
 
@@ -57,12 +60,20 @@ opt any specific package back in before running it (comment out or remove its li
 
 ## 4. Configure the home screen
 
-Edit `launcher/app/src/main/res/values/config.xml` per their answers from step 0:
+Personal values go in **`config.json`** (git-ignored; start from `config.example.json`, same keys
+as `config.xml`, omit anything unchanged) and are pushed with `./config.sh push` — no rebuild,
+and nothing personal (location, PIN) ends up in the repo. `config.xml` only holds safe defaults.
+The cricket API key is build-time: `launcher/local.properties` → `cricket.apiKey=...`
+(also git-ignored; ask the human to paste it there themselves rather than sending it to you).
+
+Keys, per their answers from step 0:
 - `dock_apps`: 4 package names. Find them with `./tv shell 'pm list packages | grep -i <name>'`
   (e.g. `netflix`, `amazonvideo`, `hotstar`, `youtube`).
 - `key_red` / `key_green` / `key_yellow` / `key_blue`: package names, or leave empty.
 - `weather_lat` / `weather_lon`: their city's coordinates (search "`<city>` latitude longitude"),
   or leave at `0.0`/`0.0` to keep the weather row hidden.
+- `kids_apps`, `kids_pin` (exactly 4 digits; empty hides kids mode), `kids_name`.
+- `cricket_enabled`, `cricket_india_women`, `screensaver_overlay`, `arcade_touches`.
 - Everything else (`hidden_apps`, `wallpaper_rotate_hours`, etc.) — defaults are fine; see
   README.md § "Change the home screen" for what each one does.
 
@@ -89,10 +100,29 @@ accessibility-service filtering the launcher depends on. Ask the human to check,
 If a soundbar is connected over HDMI-ARC, confirm it wakes when media starts playing after a
 period of silence (see README.md § "Soundbar wake-up" — needs network debugging to stay on).
 
+If kids mode is configured: Kids pill → only the kids apps; on the real remote the Settings,
+Input and Assistant buttons do nothing, other apps/Settings bounce back home; Parent pill + PIN
+leaves. (Injected keys can't test the blocked buttons, same as above.) Profiles *inside*
+Netflix/Prime/Hotstar are the apps' own business — point them to each app's kids profile and PIN.
+
+What you *can* check from ADB: screenshots (`./tv shot out.png`), `logcat -s TvHomeKeys TvHomeSaver
+TvHomeConfig`, and the launcher's state via `run-as com.udesh.tvhome cat shared_prefs/<name>.xml`.
+To preview the cricket card without a live match, write a sample `card` JSON into
+`shared_prefs/cricket.xml` with run-as.
+
 ## 7. If something's wrong
 
-- Wrong app in the dock/grid, wrong colour mapping: edit `config.xml`, rerun
-  `./build-and-install.sh`.
+- Wrong app in the dock/grid, wrong colour mapping: edit `config.json`, `./config.sh push`.
+- `./tv` connection refused after a TV restart: the TV may have a new IP (e.g. Wi-Fi instead of
+  Ethernet) — scan the subnet for port 5555 before blaming network debugging.
+- Colour-key service dead after `am force-stop com.udesh.tvhome`: it only rebinds when
+  `enabled_accessibility_services` is set to `''` and back (`./config.sh push` does this).
+- Photo screensaver black: Google's Ambient Mode problem, not ours — `pm trim-caches 999G`,
+  force-stop `com.google.android.apps.tv.dreamx` and `com.google.android.apps.mediashell`, else
+  re-link the album in the Google Home app.
+- Sony picture/sound settings are signature-locked (no `settings`/content provider access); the
+  only way is driving the menu with `input keyevent` while the human has it open, screenshot
+  after every step, and never pressing Left/Right on an item you haven't read.
 - Want the stock Sony/Google launcher back: `./restore.sh` (keeps the custom launcher installed,
   just stops using it) or `./restore.sh --uninstall` (removes it too).
 - Anything else: README.md has a dedicated section per feature with the mechanism and known

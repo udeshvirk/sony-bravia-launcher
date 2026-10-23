@@ -68,6 +68,20 @@
          dots, and a little ghost next to the weather. Your app banners stay as they are. -->
     <bool name="arcade_touches">false</bool>
 
+    <!-- Kids mode: a "Kids" pill on the home screen switches to a kids-only screen with just these
+         apps (first four in the dock). Any other app, Settings, inputs or the Play Store that comes
+         to the front is sent straight back. Leaving needs kids_pin (exactly 4 digits).
+         kids_pin empty = feature hidden. Set your PIN in config.json, never here (public repo). -->
+    <string-array name="kids_apps">
+        <item>com.google.android.youtube.tvkids</item>
+        <item>com.netflix.ninja</item>
+        <item>in.startv.hotstar</item>
+        <item>com.amazon.amazonvideo.livingroom</item>
+    </string-array>
+    <string name="kids_pin"></string>
+    <!-- Optional: shown as "Hi <name>!" on the kids screen. -->
+    <string name="kids_name"></string>
+
     <!-- Wallpapers: JPG/PNG files in
          /sdcard/Android/data/com.udesh.tvhome/files/wallpapers/
          rotate in name order, changing at most every wallpaper_rotate_hours, and only when

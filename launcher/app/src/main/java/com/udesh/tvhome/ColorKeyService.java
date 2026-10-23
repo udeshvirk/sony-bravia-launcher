@@ -111,6 +111,8 @@ public class ColorKeyService extends AccessibilityService {
     }
 
     private void onForeground(String pkg) {
+        // Kids mode: anything not on the kids list goes straight back to the kids home screen.
+        if (Kids.on(this) && !Kids.allowedForeground(this, pkg)) { kidsBlock(pkg); return; }
         if (pkg.equals(HTC_PKG) || pkg.equals("com.android.systemui") || pkg.equals(fgPkg)) return;
         fgPkg = pkg;
         if (am == null || pkg.equals(getPackageName())) return;
@@ -255,7 +257,34 @@ public class ColorKeyService extends AccessibilityService {
 
     @Override public void onInterrupt() {}
 
+    private long lastKidsBlock;
+
+    private void kidsBlock(String pkg) {
+        long now = SystemClock.uptimeMillis();
+        Log.i(TAG, "kids mode: blocked " + pkg);
+        if (now - lastKidsBlock < 300) return;   // one Home per burst of window events
+        lastKidsBlock = now;
+        performGlobalAction(GLOBAL_ACTION_HOME);
+    }
+
+    /** Buttons that lead out of the kids apps: Settings, Input, Assistant/search. */
+    private static boolean kidsBlockedKey(int k) {
+        switch (k) {
+            case KeyEvent.KEYCODE_BUTTON_2:      // Sony Settings button
+            case KeyEvent.KEYCODE_SETTINGS:
+            case KeyEvent.KEYCODE_TV_INPUT:
+            case KeyEvent.KEYCODE_ASSIST:
+            case KeyEvent.KEYCODE_VOICE_ASSIST:
+            case KeyEvent.KEYCODE_SEARCH:
+            case KeyEvent.KEYCODE_GUIDE:
+            case KeyEvent.KEYCODE_TV:
+                return true;
+        }
+        return false;
+    }
+
     @Override protected boolean onKeyEvent(KeyEvent ev) {
+        if (kidsBlockedKey(ev.getKeyCode()) && Kids.on(this)) return true;
         if (ev.getKeyCode() == KeyEvent.KEYCODE_ALL_APPS && Config.bool(ColorKeyService.this, R.bool.apps_button_opens_grid)) {
             // The system sends this to Settings (the only system home left), which ignores it.
             if (ev.getAction() == KeyEvent.ACTION_UP) {
@@ -277,6 +306,7 @@ public class ColorKeyService extends AccessibilityService {
         if (ev.getAction() == KeyEvent.ACTION_DOWN) {
             if (ev.getRepeatCount() > 0) return launchedOnDown[slot]; // held key: same decision as first press
             launchedOnDown[slot] = false;
+            if (Kids.on(this) && !Kids.allowedApp(this, target)) { launchedOnDown[slot] = true; return true; }
             boolean pass = target.isEmpty() || inPassthroughApp();
             if (pass) Log.i(TAG, "key " + slot + " passed through");
             if (pass) return false;

@@ -41,5 +41,13 @@
   "wallpaper_dir": "wallpapers",
   "wallpaper_rotate_hours": 3,
   "apps_button_opens_grid": true,
-  "soundbar_wake": true
+  "soundbar_wake": true,
+  "kids_apps": [
+    "com.google.android.youtube.tvkids",
+    "com.netflix.ninja",
+    "in.startv.hotstar",
+    "com.amazon.amazonvideo.livingroom"
+  ],
+  "kids_pin": "",
+  "kids_name": ""
 }

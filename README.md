@@ -208,6 +208,18 @@ app is on screen, so it can leave the buttons alone in the Sony TV app, HbbTV an
 Note: `input keyevent` from ADB cannot test these buttons, because shell-injected keys skip
 accessibility filtering. Use the real remote.
 
+## Kids mode
+
+Set `kids_pin` (exactly 4 digits) in `config.json` and push it; a **Kids** pill appears on the home
+screen. Kids mode shows only the apps in `kids_apps` (first four in the dock) and a **Parent** pill.
+While it is on, the colour-button service sends anything else that comes to the front (Settings,
+Play Store, other apps, HDMI inputs, Google Assistant) straight back home, ignores the Settings,
+Input and Assistant buttons, and colour buttons only open kids apps. Leaving needs the PIN (number
+buttons or the on-screen keypad; 5 wrong tries = 60 s wait). It stays on across TV restarts.
+`kids_name` optionally shows "Hi <name>!". Inside the apps, use each app's own kids profile and
+lock the adult profiles with that app's PIN (Netflix Profile Lock, Prime Video / JioHotstar
+parental PIN); use YouTube Kids rather than YouTube.
+
 ## Live cricket
 
 A mini scorecard (top right of the home screen) for India men's matches and IPL: live score

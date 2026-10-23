@@ -50,6 +50,15 @@ final class AppRepo {
         }
         dock.clear();
         grid.clear();
+        if (Kids.on(c)) {
+            // kids mode: only the allowed apps, in the order listed in kids_apps; first four in the dock
+            for (String p : Kids.apps(c)) {
+                App a = all.get(p);
+                if (a == null) continue;
+                if (dock.size() < 4) dock.add(a); else grid.add(a);
+            }
+            return;
+        }
         Set<String> used = new HashSet<>();
         for (String p : Config.array(c, R.array.dock_apps)) {
             App a = all.get(p);
