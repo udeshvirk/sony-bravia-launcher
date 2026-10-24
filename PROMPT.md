@@ -13,7 +13,7 @@ Before touching anything, get from the human:
 - Which 4 apps they want docked, and whether they want the Red/Green/Yellow/Blue remote buttons
   mapped to specific apps (ask which, if so).
 - Their city, for the weather widget (or skip it — it defaults off until coordinates are set).
-- Optional extras: live cricket (India/IPL; needs a free CricketData.org API key from them),
+- Optional extras: live cricket (India/IPL; ESPN's public feed, no key needed),
   kids mode (which apps a child may use, a 4-digit parent PIN, the child's name), the arcade look
   (off by default).
 - Confirm this is **their own TV** and they're fine with disabling ~20 Sony/Google system packages
@@ -63,8 +63,6 @@ opt any specific package back in before running it (comment out or remove its li
 Personal values go in **`config.json`** (git-ignored; start from `config.example.json`, same keys
 as `config.xml`, omit anything unchanged) and are pushed with `./config.sh push` — no rebuild,
 and nothing personal (location, PIN) ends up in the repo. `config.xml` only holds safe defaults.
-The cricket API key is build-time: `launcher/local.properties` → `cricket.apiKey=...`
-(also git-ignored; ask the human to paste it there themselves rather than sending it to you).
 
 Keys, per their answers from step 0:
 - `dock_apps`: 4 package names. Find them with `./tv shell 'pm list packages | grep -i <name>'`

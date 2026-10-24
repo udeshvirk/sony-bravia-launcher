@@ -7,10 +7,10 @@ sibling LG projects and workspace notes are in `~/Projects/TV/` (see `../CLAUDE.
 
 ## Never commit
 - `config.json` — the owner's settings pushed to the TV (location, kids PIN, kids name).
-- `launcher/local.properties` — Android SDK path and the CricketData.org `cricket.apiKey`.
+- `launcher/local.properties` — Android SDK path.
 - `shots/` — TV screenshots (can contain family photos).
-Both files are in `.gitignore`; before every commit, `git diff --cached` must not contain the API
-key, the PIN or coordinates. `config.xml` / `config.example.json` keep neutral defaults
+Both files are in `.gitignore`; before every commit, `git diff --cached` must not contain the PIN
+or coordinates. `config.xml` / `config.example.json` keep neutral defaults
 (weather 0,0, empty PIN) on purpose — the repo is public.
 
 ## Build, install, configure
@@ -30,7 +30,7 @@ directly, so `config.json` can override them.
   soundbar wake (`SoundbarWaker`, TV's own adbd, one fixed command), screensaver score overlay
   (`ScreensaverOverlay`), kids-mode lock (sends non-allowed foreground apps Home, swallows
   Settings/Input/Assistant keys).
-- `Cricket` + `CricketCard` — India/IPL score from CricketData.org (100 requests/day budget).
+- `Cricket` + `CricketCard` — India/IPL score from ESPN's public scoreboard (no key; soft failures).
 - `Kids` + `PinPad` — kids mode state, allow-list, PIN with lockout.
 - `Weather`, `Config`, `Fonts`; optional `ChomperView`/`MazeBorderView` (arcade look, off).
 

@@ -225,15 +225,17 @@ parental PIN); use YouTube Kids rather than YouTube.
 A mini scorecard (top right of the home screen) for India men's matches and IPL: live score
 with the batters at the crease and the current bowler, the next match if it starts within 18
 hours, or the result for a while afterwards. Hidden when there's nothing to show. Data comes from
-CricketData.org; the free key goes in `launcher/local.properties` as `cricket.apiKey=...`
-(git-ignored). Free plan = 100 requests a day: it only fetches while the home screen or
-screensaver is on screen, every 4 min during a live match (5 on the screensaver; that match only) and every 30 min
-otherwise (plus one check right at an upcoming match's start), and pauses for the day if the
-limit is hit. CricketData's match list only shows a match once it has started, so the series of
-every India/IPL match seen there is remembered and its fixture list fetched once a day (1 request
-per series) for the "starts today" card. National teams get flat flags bundled in the app
-(`res/drawable-nodpi/flag_*.png`, public-domain images from flagcdn.com); IPL teams and West
-Indies use CricketData's logo. Settings: `cricket_enabled`,
+ESPN's public cricket scoreboard (`site.web.api.espn.com`; no key, no daily limit). It only
+fetches while the home screen or screensaver is on screen: right away when you come Home (at most
+once a minute during a live match), every 4 min during a live match (5 on the screensaver) and
+every 30 min otherwise, plus one check right at an upcoming match's start. To go easy on a free
+feed: one request at a time, gzip (~9 KB scoreboard, ~22 KB match summary), tomorrow's fixtures
+read at most every 3 h, every 15 min while play is stopped (stumps, rain, breaks), and a 429/503
+from ESPN pauses fetching for at least 30 min. The feed is unofficial,
+so failures are soft: the last score stays, retries back off (1, 2, 4… min), a live score that
+hasn't updated for 10 min is dimmed with "Score from <time> · not updating", and it's hidden after
+an hour. National teams get flat flags bundled in the app (`res/drawable-nodpi/flag_*.png`,
+public-domain images from flagcdn.com); IPL teams and West Indies use ESPN's logo. Settings: `cricket_enabled`,
 `cricket_india_women`, `cricket_live_refresh_minutes`, `screensaver_cricket_refresh_minutes`,
 `cricket_idle_refresh_minutes`.
 

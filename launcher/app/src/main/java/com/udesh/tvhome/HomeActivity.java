@@ -203,10 +203,14 @@ public class HomeActivity extends Activity {
         } else {
             h.postDelayed(weatherTick, refresh - age);
         }
-        // cricket: same idea, faster while a match is live
-        renderCricket(cricket.cached());
+        // cricket: coming Home refreshes right away (at most once a minute while a match is in
+        // play, every 10 min otherwise), then on the live/slow interval while the home screen is up
+        Cricket.Data ck = cricket.cached();
+        renderCricket(ck);
         if (cricket.enabled()) {
-            long wait = cricketInterval() - cricket.ageMs();
+            long since = cricket.sinceAttemptMs();
+            long gap = ck != null && ck.state == Cricket.LIVE && !ck.paused ? 60_000L : 10 * 60_000L;
+            long wait = since >= gap ? 0 : cricketInterval() - since;
             if (wait <= 0) cricketTick.run(); else h.postDelayed(cricketTick, wait);
         }
         page.post(() -> applyFocus(false));
@@ -238,8 +242,8 @@ public class HomeActivity extends Activity {
                 h.removeCallbacks(cricketTick);
                 if (resumed) h.postDelayed(cricketTick, cricketInterval());
             });
-            // fallback if the fetch fails (no callback): try again on the slow interval
-            h.postDelayed(this, Config.integer(HomeActivity.this, R.integer.cricket_idle_refresh_minutes) * 60_000L);
+            // fallback if no callback comes (a screensaver fetch was already running)
+            h.postDelayed(this, 2 * 60_000L);
         }
     };
 
@@ -1051,14 +1055,19 @@ public class HomeActivity extends Activity {
     private void renderCricket(Cricket.Data d) {
         if (kids) { ckCard.setVisibility(View.GONE); return; }
         long age = d == null ? Long.MAX_VALUE : System.currentTimeMillis() - d.time;
-        if (d == null || d.state == Cricket.NONE || d.teams.size() < 2 || !cricket.enabled() || age > 24 * 3600_000L) {
+        boolean live = d != null && d.state == Cricket.LIVE;
+        if (d == null || d.state == Cricket.NONE || d.teams.size() < 2 || !cricket.enabled()
+                || age > (live ? Cricket.GIVE_UP_MS : 24 * 3600_000L)) {
             ckCard.setVisibility(View.GONE);
             return;
         }
         ckCard.bind(d);
         ckCard.setVisibility(View.VISIBLE);
-        // a live score that hasn't updated for 15 min is shown dimmed
-        ckCard.setAlpha(d.state == Cricket.LIVE && age > 15 * 60_000L ? 0.45f : 1f);
+        // the score feed hasn't answered for a while: dim the card and say how old the score is
+        boolean stale = live && age > Cricket.STALE_MS && cricket.failing();
+        if (stale) ckCard.markStale("Score from " + DateFormat.format(
+                DateFormat.is24HourFormat(this) ? "HH:mm" : "h:mm a", d.time) + "  ·  not updating");
+        ckCard.setAlpha(stale ? 0.55f : 1f);
     }
 
     private void startWifiUpdates() {

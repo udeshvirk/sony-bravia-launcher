@@ -256,7 +256,7 @@ final class ScreensaverOverlay {
     private final Runnable scoreTick = new Runnable() {
         @Override public void run() {
             if (!showing) return;
-            long wait = interval() - cricket.ageMs();
+            long wait = interval() - cricket.sinceAttemptMs();
             if (wait <= 0) {
                 cricket.fetch(d -> { if (showing) renderScore(d); });
                 wait = interval();

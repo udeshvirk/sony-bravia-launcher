@@ -72,6 +72,13 @@ final class CricketCard extends LinearLayout {
         addView(lines, new LayoutParams(-1, -2));
     }
 
+    /** Replace the status line with a note that the score is old (the feed isn't answering). */
+    void markStale(String note) {
+        status.setText(note);
+        status.setTextColor(0xCCFFFFFF);
+        status.setVisibility(VISIBLE);
+    }
+
     void bind(Cricket.Data d) {
         GradientDrawable b = new GradientDrawable();
         b.setCornerRadius(px(5));
