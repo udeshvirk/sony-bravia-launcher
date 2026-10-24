@@ -32,15 +32,18 @@ import java.util.TimeZone;
  * result, with a mini scorecard (batters at the crease + current bowler, or top scorer + best
  * bowler once it's over). Free plan = 100 requests a day, so while a match is live only that
  * match's scorecard is fetched; the full match list is rescanned on the slow interval.
+ * The match list only shows a match once it has started, so the series of every India/IPL match
+ * seen there is remembered and its fixture list fetched once a day (1 request per series): that's
+ * where "starts today" cards come from.
  * Fetches only when asked by the visible home screen; the last good card is cached in prefs.
  */
 final class Cricket {
     static final int NONE = -1, LIVE = 0, UPCOMING = 1, RESULT = 2;
 
-    static final class Team { String code, score = "", overs = "", logo = ""; boolean batting; }
+    static final class Team { String code, score = "", overs = "", logo = "", flag = ""; boolean batting; }
     static final class Line { String tag, name, figures; }
     static final class Data {
-        int state = NONE; String id = "", title = "", status = ""; long time;
+        int state = NONE; String id = "", title = "", status = ""; long time, start;
         boolean hasCard;
         final List<Team> teams = new ArrayList<>();
         final List<Line> lines = new ArrayList<>();
@@ -54,6 +57,8 @@ final class Cricket {
             "sunrisers hyderabad", "gujarat titans", "lucknow super giants"));
     private static final long UPCOMING_WINDOW = 18 * 3600_000L;   // show a match starting within this
     private static final long RESULT_WINDOW = 20 * 3600_000L;     // keep a result while start was within this
+    private static final long FIXTURES_TTL = 24 * 3600_000L;      // refetch a series' fixture list after this
+    private static final long SERIES_FORGET = 60L * 24 * 3600_000L;
 
     private final Context ctx;
     private final SharedPreferences prefs;
@@ -113,12 +118,21 @@ final class Cricket {
                         offset += arr.length();
                         for (int i = 0; i < arr.length(); i++) {
                             JSONObject m = arr.getJSONObject(i);
+                            if (relevant(m, women)) noteSeries(str(m, "series_id"), now);
                             int r = rank(m, women);
                             if (r < bestRank) { bestRank = r; best = m; }
                         }
                     }
                     if (ok) {
                         prefs.edit().putLong("scanTime", now).apply();
+                        if (bestRank >= 10) {   // nothing live: a fixture starting soon beats a result
+                            JSONArray fx = fixtures(key, now);
+                            for (int i = 0; i < fx.length(); i++) {
+                                JSONObject m = fx.getJSONObject(i);
+                                int r = rank(m, women);
+                                if (r < bestRank) { bestRank = r; best = m; }
+                            }
+                        }
                         if (best == null) {
                             d = new Data();
                         } else if (state(best) == UPCOMING) {
@@ -144,6 +158,66 @@ final class Cricket {
             final Data out = d;
             if (out != null) main.post(() -> l.onCricket(out));
         }, "cricket").start();
+    }
+
+    /** Remember a series that has an India/IPL match in it (id -> last seen). */
+    private void noteSeries(String id, long now) {
+        if (id.isEmpty()) return;
+        try {
+            JSONObject s = new JSONObject(prefs.getString("series", "{}"));
+            boolean added = !s.has(id);
+            s.put(id, now);
+            SharedPreferences.Editor e = prefs.edit().putString("series", s.toString());
+            if (added) e.putLong("fixturesTime", 0);   // new series: fetch its fixtures now
+            e.apply();
+        } catch (Exception ignored) { }
+    }
+
+    /** Not-yet-finished matches of the remembered series; refetched once a day. */
+    private JSONArray fixtures(String key, long now) {
+        JSONArray cached;
+        try { cached = new JSONArray(prefs.getString("fixtures", "[]")); } catch (Exception e) { cached = new JSONArray(); }
+        if (now - prefs.getLong("fixturesTime", 0) < FIXTURES_TTL) return cached;
+        try {
+            JSONObject series = new JSONObject(prefs.getString("series", "{}")), keep = new JSONObject();
+            JSONArray out = new JSONArray();
+            boolean ok = true;
+            for (java.util.Iterator<String> it = series.keys(); it.hasNext(); ) {
+                String id = it.next();
+                if (now - series.optLong(id) > SERIES_FORGET) continue;
+                JSONObject j = call(key, "series_info?id=" + URLEncoder.encode(id, "UTF-8"));
+                if (j == null) { ok = false; keep.put(id, series.optLong(id)); continue; }
+                JSONArray list = j.optJSONArray("matchList");
+                boolean more = false;
+                if (list != null) for (int i = 0; i < list.length(); i++) {
+                    JSONObject m = list.getJSONObject(i);
+                    if (m.optBoolean("matchEnded") || startMs(m) < now - 3600_000L) continue;
+                    out.put(m);
+                    more = true;
+                }
+                if (more) keep.put(id, series.optLong(id));   // series over: forget it
+            }
+            if (!ok && out.length() == 0) return cached;    // API trouble: keep what we had
+            prefs.edit().putString("series", keep.toString()).putString("fixtures", out.toString())
+                    .putLong("fixturesTime", now).apply();
+            return out;
+        } catch (Exception e) {
+            return cached;
+        }
+    }
+
+    /**
+     * How long after the cached card was fetched to fetch again: fast while live, and for an
+     * upcoming match wake up right at its start instead of waiting out the slow interval.
+     */
+    long refreshMs(int liveMinutesRes) {
+        long idle = Config.integer(ctx, R.integer.cricket_idle_refresh_minutes) * 60_000L;
+        long live = Config.integer(ctx, liveMinutesRes) * 60_000L;
+        Data d = cached();
+        if (d == null) return idle;
+        if (d.state == LIVE) return live;
+        if (d.state == UPCOMING && d.start > 0) return Math.max(live, Math.min(idle, d.start + 60_000L - d.time));
+        return idle;
     }
 
     /** GET an API endpoint; returns "data" (the object) or null. Pauses until UTC midnight at the daily limit. */
@@ -189,16 +263,28 @@ final class Cricket {
 
     // ------------------------------------------------------------------ picking a match
 
+    private static boolean india(JSONObject m, boolean women) {
+        JSONArray teams = m.optJSONArray("teams");
+        if (teams == null || teams.length() < 2) return false;
+        String a = teams.optString(0).trim().toLowerCase(Locale.ROOT), b = teams.optString(1).trim().toLowerCase(Locale.ROOT);
+        return a.equals("india") || b.equals("india")
+                || (women && (a.equals("india women") || b.equals("india women")));
+    }
+
+    private static boolean ipl(JSONObject m) {
+        JSONArray teams = m.optJSONArray("teams");
+        if (teams == null || teams.length() < 2) return false;
+        String a = teams.optString(0).trim().toLowerCase(Locale.ROOT), b = teams.optString(1).trim().toLowerCase(Locale.ROOT);
+        return m.optString("name").toLowerCase(Locale.ROOT).contains("indian premier league")
+                || (IPL_TEAMS.contains(a) && IPL_TEAMS.contains(b));
+    }
+
+    private static boolean relevant(JSONObject m, boolean women) { return india(m, women) || ipl(m); }
+
     /** Lower is better; MAX_VALUE = not India/IPL or out of the time window. */
     private static int rank(JSONObject m, boolean women) {
-        JSONArray teams = m.optJSONArray("teams");
-        if (teams == null || teams.length() < 2) return Integer.MAX_VALUE;
-        String a = teams.optString(0).trim().toLowerCase(Locale.ROOT), b = teams.optString(1).trim().toLowerCase(Locale.ROOT);
-        boolean india = a.equals("india") || b.equals("india")
-                || (women && (a.equals("india women") || b.equals("india women")));
-        boolean ipl = m.optString("name").toLowerCase(Locale.ROOT).contains("indian premier league")
-                || (IPL_TEAMS.contains(a) && IPL_TEAMS.contains(b));
-        if (!india && !ipl) return Integer.MAX_VALUE;
+        boolean india = india(m, women);
+        if (!india && !ipl(m)) return Integer.MAX_VALUE;
         int pref = india ? 0 : 1;
         long start = startMs(m), now = System.currentTimeMillis();
         int state = state(m);
@@ -233,6 +319,7 @@ final class Cricket {
         Data d = new Data();
         d.state = state(m);
         d.id = str(m, "id");
+        d.start = startMs(m);
         String[] parts = str(m, "name").split(", ");
         d.title = parts.length >= 3 ? parts[1] + "  ·  " + stripYear(parts[2]) : parts.length == 2 ? parts[1] : "";
 
@@ -245,7 +332,8 @@ final class Cricket {
             String name = teams.optString(t).trim();
             Team tm = new Team();
             tm.code = shortName(m, name);
-            tm.logo = logo(m, name);
+            tm.flag = flag(name);
+            if (tm.flag.isEmpty()) tm.logo = logo(m, name);   // IPL teams, West Indies: the API's logo
             tm.batting = name.equalsIgnoreCase(battingTeam);
             if (scores != null) {
                 StringBuilder sb = new StringBuilder();
@@ -347,6 +435,33 @@ final class Cricket {
         return b.optInt("w") + "/" + b.optInt("r") + " (" + overs(b.optDouble("o")) + ")";
     }
 
+    /** Country code of a national team's bundled flag ("India Women", "India A" too), or "". */
+    private static String flag(String team) {
+        String t = team.toLowerCase(Locale.ROOT).replaceAll("\\s+(women|a|u19)$", "").trim();
+        switch (t) {
+            case "india": return "in";
+            case "pakistan": return "pk";
+            case "australia": return "au";
+            case "england": return "gb_eng";
+            case "new zealand": return "nz";
+            case "south africa": return "za";
+            case "sri lanka": return "lk";
+            case "bangladesh": return "bd";
+            case "afghanistan": return "af";
+            case "zimbabwe": return "zw";
+            case "ireland": return "ie";
+            case "netherlands": return "nl";
+            case "scotland": return "gb_sct";
+            case "nepal": return "np";
+            case "united arab emirates": case "uae": return "ae";
+            case "united states of america": case "usa": return "us";
+            case "oman": return "om";
+            case "namibia": return "na";
+            case "canada": return "ca";
+            default: return "";
+        }
+    }
+
     /** Team logo from teamInfo, downloaded once into the app's files; returns the local path or "". */
     private String logo(JSONObject m, String team) {
         JSONArray info = m.optJSONArray("teamInfo");
@@ -410,10 +525,10 @@ final class Cricket {
     private static JSONObject toJson(Data d) throws Exception {
         JSONObject j = new JSONObject();
         j.put("state", d.state).put("id", d.id).put("title", d.title).put("status", d.status)
-                .put("time", d.time).put("hasCard", d.hasCard);
+                .put("time", d.time).put("start", d.start).put("hasCard", d.hasCard);
         JSONArray ts = new JSONArray();
         for (Team t : d.teams) ts.put(new JSONObject().put("code", t.code).put("score", t.score)
-                .put("overs", t.overs).put("logo", t.logo).put("batting", t.batting));
+                .put("overs", t.overs).put("logo", t.logo).put("flag", t.flag).put("batting", t.batting));
         j.put("teams", ts);
         JSONArray ls = new JSONArray();
         for (Line l : d.lines) ls.put(new JSONObject().put("tag", l.tag).put("name", l.name).put("figures", l.figures));
@@ -425,13 +540,13 @@ final class Cricket {
         Data d = new Data();
         d.state = j.optInt("state", NONE);
         d.id = j.optString("id"); d.title = j.optString("title"); d.status = j.optString("status");
-        d.time = j.optLong("time"); d.hasCard = j.optBoolean("hasCard");
+        d.time = j.optLong("time"); d.start = j.optLong("start"); d.hasCard = j.optBoolean("hasCard");
         JSONArray ts = j.optJSONArray("teams");
         if (ts != null) for (int i = 0; i < ts.length(); i++) {
             JSONObject o = ts.optJSONObject(i);
             Team t = new Team();
             t.code = o.optString("code"); t.score = o.optString("score"); t.overs = o.optString("overs");
-            t.logo = o.optString("logo"); t.batting = o.optBoolean("batting");
+            t.logo = o.optString("logo"); t.flag = o.optString("flag"); t.batting = o.optBoolean("batting");
             d.teams.add(t);
         }
         JSONArray ls = j.optJSONArray("lines");

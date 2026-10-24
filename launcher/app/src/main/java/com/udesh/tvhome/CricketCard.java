@@ -90,7 +90,8 @@ final class CricketCard extends LinearLayout {
             LinearLayout row = new LinearLayout(getContext());
             row.setOrientation(HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.addView(logo(t), new LayoutParams(px(24), px(24)));
+            if (flagRes(t.flag) != 0) row.addView(flag(t.flag), new LayoutParams(px(30), px(20)));
+            else row.addView(logo(t), new LayoutParams(px(24), px(24)));
             TextView code = text(18, 500, dim ? 0x99FFFFFF : Color.WHITE);
             code.setText(t.code);
             LayoutParams cl = new LayoutParams(0, -2, 1);
@@ -137,6 +138,41 @@ final class CricketCard extends LinearLayout {
         boolean hasLines = !d.lines.isEmpty();
         divider.setVisibility(hasLines ? VISIBLE : GONE);
         lines.setVisibility(hasLines ? VISIBLE : GONE);
+    }
+
+    /** Bundled flat flag (res/drawable-nodpi/flag_*.png), or 0. */
+    private static int flagRes(String code) {
+        switch (code) {
+            case "in": return R.drawable.flag_in;
+            case "pk": return R.drawable.flag_pk;
+            case "au": return R.drawable.flag_au;
+            case "gb_eng": return R.drawable.flag_gb_eng;
+            case "nz": return R.drawable.flag_nz;
+            case "za": return R.drawable.flag_za;
+            case "lk": return R.drawable.flag_lk;
+            case "bd": return R.drawable.flag_bd;
+            case "af": return R.drawable.flag_af;
+            case "zw": return R.drawable.flag_zw;
+            case "ie": return R.drawable.flag_ie;
+            case "nl": return R.drawable.flag_nl;
+            case "gb_sct": return R.drawable.flag_gb_sct;
+            case "np": return R.drawable.flag_np;
+            case "ae": return R.drawable.flag_ae;
+            case "us": return R.drawable.flag_us;
+            case "om": return R.drawable.flag_om;
+            case "na": return R.drawable.flag_na;
+            case "ca": return R.drawable.flag_ca;
+            default: return 0;
+        }
+    }
+
+    /** Flat flag, shown whole (2:1 flags letterbox inside the 3:2 slot). */
+    private View flag(String code) {
+        ImageView iv = new ImageView(getContext());
+        iv.setImageResource(flagRes(code));
+        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        iv.setAdjustViewBounds(false);
+        return iv;
     }
 
     /** Round team logo, or a circle with the first letter when there's none. */

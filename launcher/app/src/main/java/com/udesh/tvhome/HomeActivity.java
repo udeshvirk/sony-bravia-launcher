@@ -244,9 +244,7 @@ public class HomeActivity extends Activity {
     };
 
     private long cricketInterval() {
-        Cricket.Data d = cricket.cached();
-        boolean live = d != null && d.state == Cricket.LIVE;
-        return Config.integer(HomeActivity.this, live ? R.integer.cricket_live_refresh_minutes : R.integer.cricket_idle_refresh_minutes) * 60_000L;
+        return cricket.refreshMs(R.integer.cricket_live_refresh_minutes);
     }
 
     private final BroadcastReceiver timeReceiver = new BroadcastReceiver() {

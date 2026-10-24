@@ -266,10 +266,7 @@ final class ScreensaverOverlay {
     };
 
     private long interval() {
-        Cricket.Data d = cricket.cached();
-        boolean live = d != null && d.state == Cricket.LIVE;
-        return Config.integer(svc, live ? R.integer.screensaver_cricket_refresh_minutes
-                : R.integer.cricket_idle_refresh_minutes) * 60_000L;
+        return cricket.refreshMs(R.integer.screensaver_cricket_refresh_minutes);
     }
 
     private TextView text(float sp, int weight, int color) {

@@ -228,7 +228,12 @@ hours, or the result for a while afterwards. Hidden when there's nothing to show
 CricketData.org; the free key goes in `launcher/local.properties` as `cricket.apiKey=...`
 (git-ignored). Free plan = 100 requests a day: it only fetches while the home screen or
 screensaver is on screen, every 4 min during a live match (5 on the screensaver; that match only) and every 30 min
-otherwise, and pauses for the day if the limit is hit. Settings: `cricket_enabled`,
+otherwise (plus one check right at an upcoming match's start), and pauses for the day if the
+limit is hit. CricketData's match list only shows a match once it has started, so the series of
+every India/IPL match seen there is remembered and its fixture list fetched once a day (1 request
+per series) for the "starts today" card. National teams get flat flags bundled in the app
+(`res/drawable-nodpi/flag_*.png`, public-domain images from flagcdn.com); IPL teams and West
+Indies use CricketData's logo. Settings: `cricket_enabled`,
 `cricket_india_women`, `cricket_live_refresh_minutes`, `screensaver_cricket_refresh_minutes`,
 `cricket_idle_refresh_minutes`.
 
