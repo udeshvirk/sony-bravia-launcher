@@ -22,10 +22,12 @@ final class CricketCard extends LinearLayout {
     private final TextView badge, title, status;
     private final LinearLayout teams, lines;
     private final View divider;
+    private final boolean arcade;   // arcade look: pixel font, stepped blue frame
 
     CricketCard(Context c) {
         super(c);
         dp = c.getResources().getDisplayMetrics().density;
+        arcade = Arcade.on(c);
         setOrientation(VERTICAL);
         setFocusable(false);
         setPadding(px(20), px(14), px(20), px(14));
@@ -33,17 +35,17 @@ final class CricketCard extends LinearLayout {
         bg.setColor(0xB8141418);
         bg.setStroke(Math.max(1, px(1)), 0x24FFFFFF);
         bg.setCornerRadius(px(20));
-        setBackground(bg);
+        setBackground(arcade ? new Arcade.Frame(0xE6000000, Arcade.BLUE, px(2)) : bg);
 
         // header: badge + match title
         LinearLayout head = new LinearLayout(c);
         head.setOrientation(HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        badge = text(11, 600, Color.WHITE);
-        badge.setLetterSpacing(0.1f);
+        badge = text(11, 8, 600, Color.WHITE);
+        badge.setLetterSpacing(arcade ? 0f : 0.1f);
         badge.setPadding(px(7), px(3), px(7), px(3));
         head.addView(badge);
-        title = text(13, 400, 0x99FFFFFF);
+        title = text(13, 8, 400, 0x99FFFFFF);
         LayoutParams tlp = new LayoutParams(0, -2, 1);
         tlp.leftMargin = px(10);
         head.addView(title, tlp);
@@ -55,7 +57,7 @@ final class CricketCard extends LinearLayout {
         tl.topMargin = px(10);
         addView(teams, tl);
 
-        status = text(14, 400, 0xE6FFD27A);
+        status = text(14, 8, 400, 0xE6FFD27A);
         LayoutParams sl = new LayoutParams(-1, -2);
         sl.topMargin = px(8);
         addView(status, sl);
@@ -81,7 +83,7 @@ final class CricketCard extends LinearLayout {
 
     void bind(Cricket.Data d) {
         GradientDrawable b = new GradientDrawable();
-        b.setCornerRadius(px(5));
+        b.setCornerRadius(arcade ? 0 : px(5));
         if (d.state == Cricket.LIVE) { badge.setText("LIVE"); b.setColor(LIVE_RED); }
         else if (d.state == Cricket.UPCOMING) { badge.setText("UP NEXT"); b.setColor(0x33FFFFFF); }
         else { badge.setText("RESULT"); b.setColor(0x33FFFFFF); }
@@ -99,15 +101,15 @@ final class CricketCard extends LinearLayout {
             row.setGravity(Gravity.CENTER_VERTICAL);
             if (flagRes(t.flag) != 0) row.addView(flag(t.flag), new LayoutParams(px(30), px(20)));
             else row.addView(logo(t), new LayoutParams(px(24), px(24)));
-            TextView code = text(18, 500, dim ? 0x99FFFFFF : Color.WHITE);
+            TextView code = text(18, 12, 500, dim ? 0x99FFFFFF : Color.WHITE);
             code.setText(t.code);
             LayoutParams cl = new LayoutParams(0, -2, 1);
             cl.leftMargin = px(10);
             row.addView(code, cl);
-            TextView score = text(19, 500, dim ? 0x99FFFFFF : Color.WHITE);
+            TextView score = text(19, 12, 500, dim ? 0x99FFFFFF : Color.WHITE);
             score.setText(t.score.isEmpty() ? "–" : t.score);
             row.addView(score);
-            TextView ov = text(13, 300, 0x80FFFFFF);
+            TextView ov = text(13, 8, 300, 0x80FFFFFF);
             ov.setText(t.overs);
             ov.setGravity(Gravity.END);
             LayoutParams ol = new LayoutParams(px(58), -2);
@@ -127,14 +129,14 @@ final class CricketCard extends LinearLayout {
             LinearLayout row = new LinearLayout(getContext());
             row.setOrientation(HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            TextView tag = text(10, 500, 0x73FFFFFF);
-            tag.setLetterSpacing(0.12f);
+            TextView tag = text(10, 8, 500, 0x73FFFFFF);
+            tag.setLetterSpacing(arcade ? 0f : 0.12f);
             tag.setText(l.tag);
             row.addView(tag, new LayoutParams(px(42), -2));
-            TextView name = text(14, 400, 0xE6FFFFFF);
+            TextView name = text(14, 8, 400, 0xE6FFFFFF);
             name.setText(l.name);
             row.addView(name, new LayoutParams(0, -2, 1));
-            TextView fig = text(14, 500, Color.WHITE);
+            TextView fig = text(14, 8, 500, Color.WHITE);
             fig.setText(l.figures);
             LayoutParams fl = new LayoutParams(-2, -2);
             fl.leftMargin = px(12);
@@ -195,7 +197,7 @@ final class CricketCard extends LinearLayout {
             iv.setClipToOutline(true);
             return iv;
         }
-        TextView tv = text(11, 600, Color.WHITE);
+        TextView tv = text(11, 8, 600, Color.WHITE);
         tv.setGravity(Gravity.CENTER);
         tv.setText(t.code.isEmpty() ? "?" : t.code.substring(0, 1));
         GradientDrawable g = new GradientDrawable();
@@ -205,14 +207,17 @@ final class CricketCard extends LinearLayout {
         return tv;
     }
 
-    private TextView text(float sp, int weight, int color) {
+    /** pixelSp: the size in the arcade look (Press Start 2P is much wider; keep it a multiple of 4 sp
+     *  so its 8 px grid lands on whole pixels at 2x). */
+    private TextView text(float sp, float pixelSp, int weight, int color) {
         TextView t = new TextView(getContext());
-        t.setTextSize(sp);
-        t.setTypeface(Fonts.outfit(getContext(), weight));
+        t.setTextSize(arcade ? pixelSp : sp);
+        t.setTypeface(arcade ? Fonts.pixel(getContext()) : Fonts.outfit(getContext(), weight));
         t.setTextColor(color);
         t.setIncludeFontPadding(false);
         t.setSingleLine(true);
         t.setEllipsize(TextUtils.TruncateAt.END);
+        if (arcade) t.setAllCaps(true);   // after setSingleLine, which resets it
         return t;
     }
 

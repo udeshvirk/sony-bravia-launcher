@@ -63,8 +63,10 @@
     <bool name="screensaver_overlay">true</bool>
     <bool name="screensaver_clock">false</bool>
 
-    <!-- Arcade touches: a chomper that runs along the top of the dock to the selected app, eating
-         dots, and a little ghost next to the weather. Your app banners stay as they are. -->
+    <!-- Arcade look: the whole home screen as an 8-bit arcade game. Neon name tiles in each
+         app's brand colour, a pixel font, a yellow pixel highlight, blue maze-style frames, faint
+         CRT scanlines, a chomper that runs along the dock eating dots, and a ghost next to the
+         weather. Black background (wallpapers are not shown). Off = the normal look. -->
     <bool name="arcade_touches">false</bool>
 
     <!-- Kids mode: a "Kids" pill on the home screen switches to a kids-only screen with just these

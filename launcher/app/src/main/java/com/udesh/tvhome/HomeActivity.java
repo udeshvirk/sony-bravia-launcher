@@ -84,6 +84,7 @@ public class HomeActivity extends Activity {
     private LinearLayout wxRow, menu;
     private CricketCard ckCard;
     private ChomperView chomper;   // arcade touches (null when off)
+    private boolean arcade;        // arcade_touches: the whole 8-bit look
     private View[] pills;
     private int[] pillActions;
     private static final int P_INPUTS = 0, P_WIFI = 1, P_SETTINGS = 2, P_KIDS = 3, P_PARENT = 4;
@@ -128,6 +129,7 @@ public class HomeActivity extends Activity {
         weather = new Weather(this);
         cricket = new Cricket(this);
         kids = Kids.on(this);
+        arcade = Arcade.on(this);
         metrics();
         buildUi();
         loadApps();
@@ -293,6 +295,14 @@ public class HomeActivity extends Activity {
         return t;
     }
 
+    /** Arcade look: Press Start 2P, upper case, in multiples of 4 sp so its 8 px grid stays crisp at 2x. */
+    private TextView pixText(float sp, int color) {
+        TextView t = text(sp, 400, color);
+        t.setTypeface(Fonts.pixel(this));
+        t.setAllCaps(true);
+        return t;
+    }
+
     private static FrameLayout.LayoutParams at(int x, int y, int w, int h) {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, h);
         lp.leftMargin = x;
@@ -326,6 +336,13 @@ public class HomeActivity extends Activity {
         page.setClipChildren(false);
         page.setClipToPadding(false);
         root.addView(page, new FrameLayout.LayoutParams(-1, sh));
+
+        if (arcade) {
+            // faint CRT scanlines over everything (one repeating shader, drawn with the page)
+            View lines = new View(this);
+            lines.setBackground(Arcade.scanlines(this, Math.max(3, px(2))));
+            root.addView(lines, new FrameLayout.LayoutParams(-1, -1));
+        }
 
         // ambient glow behind the big title (radial gradient, squashed into an ellipse; no blur)
         glowDrawable = new GradientDrawable();
@@ -366,7 +383,7 @@ public class HomeActivity extends Activity {
         LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-2, -2);
         rlp.leftMargin = px(14);
         wxRow.addView(wxRange, rlp);
-        if (Config.bool(HomeActivity.this, R.bool.arcade_touches)) {
+        if (arcade) {
             ImageView ghost = new ImageView(this);
             ghost.setImageResource(R.drawable.ic_ghost);
             LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(px(20), px(20));
@@ -419,7 +436,7 @@ public class HomeActivity extends Activity {
         // big title of the focused dock app
         title = text(46, 300, 0xF2FFFFFF);
         title.setGravity(Gravity.BOTTOM | Gravity.START);
-        if (Config.bool(HomeActivity.this, R.bool.arcade_touches)) arcadeText();
+        if (arcade) arcadeText();
         page.addView(title, at(bandX + px(6), bandY - px(14) - titleH, bandW, titleH));
 
         // dock band
@@ -430,15 +447,17 @@ public class HomeActivity extends Activity {
         bandBg.setStroke(Math.max(1, px(1)), 0x12FFFFFF);
         bandBg.setCornerRadius(px(30));
         band.setBackground(bandBg);
-        if (Config.bool(HomeActivity.this, R.bool.arcade_touches)) {
-            // neon maze corridor around the dock (behind the bar, drawn once)
+        if (arcade) {
+            // neon maze corridor around the dock (behind the bar, drawn once); the bar itself
+            // stays black so the tiles' stepped corners blend in
             int o = px(14);
             page.addView(new MazeBorderView(this, px(30), o), at(bandX - o, bandY - o, bandW + 2 * o, bandH + 2 * o));
+            bandBg.setColor(Color.BLACK);
             bandBg.setStroke(0, 0);
         }
         page.addView(band, at(bandX, bandY, bandW, bandH));
         // arcade touches: dots + chomper in the band's top margin, above the app banners
-        if (Config.bool(HomeActivity.this, R.bool.arcade_touches)) {
+        if (arcade) {
             chomper = new ChomperView(this);
             chomper.setLane(bandPadX, bandW - bandPadX);
             page.addView(chomper, at(bandX, bandY, bandW, bandPadY));
@@ -466,7 +485,7 @@ public class HomeActivity extends Activity {
         mb.setColor(0xEB1C1C20);
         mb.setStroke(Math.max(1, px(1)), 0x2EFFFFFF);
         mb.setCornerRadius(px(18));
-        menu.setBackground(mb);
+        menu.setBackground(arcade ? new Arcade.Frame(0xF2000000, Arcade.BLUE, px(2)) : mb);
         menu.setPadding(px(8), px(8), px(8), px(8));
         menu.setVisibility(View.GONE);
         page.addView(menu, at(0, 0, px(250), -2));
@@ -486,12 +505,12 @@ public class HomeActivity extends Activity {
         bg.setColor(0x24FFFFFF);
         bg.setStroke(Math.max(1, px(1)), 0x2EFFFFFF);
         bg.setCornerRadius(px(20));
-        p.setBackground(bg);
+        p.setBackground(arcade ? new Arcade.Frame(0xE6000000, Arcade.BLUE, px(2)) : bg);
         ImageView iv = new ImageView(this);
         iv.setImageResource(icon);
         iv.setAlpha(0.9f);
         p.addView(iv, new LinearLayout.LayoutParams(px(18), px(18)));
-        TextView t = text(15, 400, 0xEBFFFFFF);
+        TextView t = arcade ? pixText(8, 0xF2FFFFFF) : text(15, 400, 0xEBFFFFFF);
         t.setText(label);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
         lp.leftMargin = px(8);
@@ -500,6 +519,7 @@ public class HomeActivity extends Activity {
     }
 
     private View card(AppRepo.App a) {
+        if (arcade) return arcadeCard(a);
         FrameLayout c = new FrameLayout(this);
         final float r = px(12);
         c.setOutlineProvider(new ViewOutlineProvider() {
@@ -530,6 +550,37 @@ public class HomeActivity extends Activity {
             c.addView(t, tlp);
         }
         return c;
+    }
+
+    /** Arcade look: a marquee tile, the app's name in the 8-bit font inside a neon frame in its
+     *  brand colour (sampled from its banner). Always sharp; no logos. */
+    private View arcadeCard(AppRepo.App a) {
+        FrameLayout c = new FrameLayout(this);
+        int brand = a.brand;
+        c.setBackground(new Arcade.Frame(0xFF000000 | blend(brand, 0x0A0A14, 0.14f),
+                brand, px(3)));
+        String name = a.label.isEmpty() ? a.pkg : a.label;
+        TextView t = pixText(name.length() <= 13 ? 12 : 8, brand);
+        t.setText(name);
+        t.setGravity(Gravity.CENTER);
+        t.setSingleLine(false);
+        t.setMaxLines(2);
+        t.setAllCaps(true);          // setSingleLine resets it
+        t.setLineSpacing(px(6), 1f);
+        t.setShadowLayer(px(8), 0, 0, 0x99000000 | (brand & 0xFFFFFF));
+        FrameLayout.LayoutParams tlp = new FrameLayout.LayoutParams(-1, -2);
+        tlp.gravity = Gravity.CENTER;
+        tlp.leftMargin = tlp.rightMargin = px(12);
+        c.addView(t, tlp);
+        return c;
+    }
+
+    /** a mixed into b by f (0 = all b). */
+    private static int blend(int a, int b, float f) {
+        int r = Math.round(((a >> 16) & 0xFF) * f + ((b >> 16) & 0xFF) * (1 - f));
+        int g = Math.round(((a >> 8) & 0xFF) * f + ((b >> 8) & 0xFF) * (1 - f));
+        int bl = Math.round((a & 0xFF) * f + (b & 0xFF) * (1 - f));
+        return r << 16 | g << 8 | bl;
     }
 
     // ------------------------------------------------------------------ apps
@@ -605,7 +656,7 @@ public class HomeActivity extends Activity {
             AppRepo.App a = repo.grid.get(pos);
             View c = card(a);
             cell.addView(c, at(gap / 2, 0, tileW, tileH));
-            TextView label = text(15, 400, 0xE6FFFFFF);
+            TextView label = arcade ? pixText(8, Arcade.YELLOW) : text(15, 400, 0xE6FFFFFF);
             label.setText(a.label);
             label.setGravity(Gravity.CENTER_HORIZONTAL);
             label.setAlpha(zone == GRID && pos == gridIdx ? 1f : 0f);
@@ -971,11 +1022,11 @@ public class HomeActivity extends Activity {
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setPadding(px(16), 0, px(16), 0);
-            TextView t = text(16, 400, 0xEBFFFFFF);
+            TextView t = arcade ? pixText(8, 0xEBFFFFFF) : text(16, 400, 0xEBFFFFFF);
             t.setText(it.label);
             row.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
             if (it.port != null) {
-                TextView p = text(13, 400, 0x80FFFFFF);
+                TextView p = arcade ? pixText(8, 0x80FFFFFF) : text(13, 400, 0x80FFFFFF);
                 p.setText(it.port);
                 row.addView(p, new LinearLayout.LayoutParams(-2, -2));
             }
@@ -1030,6 +1081,9 @@ public class HomeActivity extends Activity {
         title.setTextSize(32);
         greeting.setPadding(0, 0, 0, px(10));
         date.setPadding(0, px(14), 0, 0);
+        for (TextView t : new TextView[]{wxTemp, wxRange}) { t.setTypeface(px); t.setLetterSpacing(0f); }
+        wxTemp.setTextSize(12);
+        wxRange.setTextSize(8);
     }
 
     private void updateClock() {
@@ -1127,7 +1181,7 @@ public class HomeActivity extends Activity {
     }
 
     private void loadWallpaper() {
-        File f = pickWallpaper();
+        File f = arcade ? null : pickWallpaper();   // the arcade look is a black screen
         long stamp = f == null ? 0 : f.lastModified() ^ f.getPath().hashCode();
         if (stamp == wallpaperStamp) return;
         wallpaperStamp = stamp;

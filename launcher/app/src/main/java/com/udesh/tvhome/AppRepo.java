@@ -27,6 +27,7 @@ final class AppRepo {
         Drawable banner;   // null when the app has no TV banner
         Drawable icon;
         int glow = Color.WHITE;
+        int brand = Color.WHITE;   // arcade look: tile colour (finds a small logo on a white banner)
     }
 
     final List<App> dock = new ArrayList<>();
@@ -34,6 +35,7 @@ final class AppRepo {
 
     void load(Context c) {
         PackageManager pm = c.getPackageManager();
+        boolean arcade = Arcade.on(c);
         Map<String, App> all = new HashMap<>();
         Intent q = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
         for (ResolveInfo ri : pm.queryIntentActivities(q, 0)) {
@@ -46,6 +48,7 @@ final class AppRepo {
             if (a.banner == null) a.banner = ai.applicationInfo.loadBanner(pm);
             a.icon = ri.loadIcon(pm);
             a.glow = sampleGlow(a.banner != null ? a.banner : a.icon);
+            a.brand = arcade ? brandColor(a.banner != null ? a.banner : a.icon, a.glow) : a.glow;
             all.put(a.pkg, a);
         }
         dock.clear();
@@ -100,6 +103,33 @@ final class AppRepo {
     }
 
     /** Most vivid colour in a small render of the banner, brightened for use as a glow. */
+    /** Arcade tiles: like sampleGlow, but any clearly coloured logo wins over a white or grey
+     *  background (YouTube's red on white). Falls back to the glow colour. */
+    static int brandColor(Drawable d, int fallback) {
+        if (d == null) return fallback;
+        final int w = 32, h = 18;
+        Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Drawable copy = d.getConstantState() != null ? d.getConstantState().newDrawable().mutate() : d;
+        copy.setBounds(0, 0, w, h);
+        copy.draw(new Canvas(b));
+        float[] hsv = new float[3];
+        double sx = 0, sy = 0;
+        int coloured = 0;
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            int p = b.getPixel(x, y);
+            if (Color.alpha(p) < 128) continue;
+            Color.colorToHSV(p, hsv);
+            if (hsv[1] < 0.45f || hsv[2] < 0.35f) continue;   // only clearly coloured pixels
+            double rad = Math.toRadians(hsv[0]);
+            sx += Math.cos(rad); sy += Math.sin(rad); coloured++;
+        }
+        b.recycle();
+        if (coloured < 6) return fallback;
+        float hue = (float) Math.toDegrees(Math.atan2(sy, sx));
+        if (hue < 0) hue += 360;
+        return Color.HSVToColor(new float[]{hue, 0.75f, 1f});
+    }
+
     static int sampleGlow(Drawable d) {
         if (d == null) return 0xFF8FA8FF;
         final int w = 32, h = 18;

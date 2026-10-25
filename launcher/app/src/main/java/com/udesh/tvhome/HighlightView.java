@@ -20,6 +20,8 @@ final class HighlightView extends View {
     private ValueAnimator anim;
     private boolean placed;
     private final float dp;
+    private final boolean arcade;
+    private final Paint pxFill = new Paint(), pxBorder = new Paint();
 
     HighlightView(Context c) {
         super(c);
@@ -29,6 +31,9 @@ final class HighlightView extends View {
         stroke.setStrokeWidth(1.5f * dp);
         stroke.setColor(0x66FFFFFF);
         setWillNotDraw(false);
+        arcade = Arcade.on(c);
+        pxFill.setColor(0x1AFFE500);
+        pxBorder.setColor(Arcade.YELLOW);
     }
 
     /** Tints the highlight gold while a tile is being dragged into a new position. */
@@ -36,6 +41,8 @@ final class HighlightView extends View {
         fill.setColor(on ? 0x332FD66B : 0x1FFFFFFF);
         stroke.setColor(on ? 0xCC2FD66B : 0x66FFFFFF);
         stroke.setStrokeWidth((on ? 2.5f : 1.5f) * dp);
+        pxFill.setColor(on ? 0x262FD66B : 0x1AFFE500);
+        pxBorder.setColor(on ? Arcade.GREEN : Arcade.YELLOW);
         invalidate();
     }
 
@@ -66,6 +73,10 @@ final class HighlightView extends View {
 
     @Override protected void onDraw(Canvas c) {
         if (!placed) return;
+        if (arcade) {   // chunky stepped pixel frame instead of glass
+            Arcade.frame(c, cur, 3 * dp, pxFill, pxBorder);
+            return;
+        }
         c.drawRoundRect(cur, curR, curR, fill);
         sheen.setShader(new LinearGradient(0, cur.top, 0, cur.top + cur.height() * 0.55f,
                 0x33FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));

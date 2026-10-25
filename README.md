@@ -1,65 +1,86 @@
-# Sony BRAVIA debloat + Apple TV–style home screen
+# Sony BRAVIA Launcher
 
-Built and tested on a Sony BRAVIA 4K VH2 (Android TV 12, SDK 31); other Sony Android TV models
-should mostly work the same way, but package names and a few Sony-specific behaviours (noted below)
-may differ.
+A fast, clean home screen for Sony BRAVIA Android TVs, plus a debloat script. No root, no ads,
+no telemetry, and everything can be undone with one command.
 
 ![Home screen](docs/home.png)
 ![App grid](docs/apps.png)
 
-Everything here talks to the TV over Wi-Fi ADB using the Python `adb-shell` package (`./tv`),
-because macOS Local Network privacy blocks the stock `adb` binary. Find your TV's IP in
-**Settings → Network → Status**, then either export it once per shell (`export TV_IP=192.168.1.50`)
-or prefix every command (`TV_IP=192.168.1.50 ./tv shell ...`). Turn on **Developer options → Network
-debugging** on the TV first (tap the build number in About seven times to unlock Developer options).
+## Why
 
-## Setup
+The stock Google TV home on a 2021 BRAVIA is sluggish and mostly promoted rows, and the TV ships
+with Sony and third-party tracking and promo apps running underneath. This replaces the home with
+a calm, Apple TV–style one built around the apps you actually use, and disables the rest. The whole app is
+plain Java with views built in code: no frameworks, no blur, no video, nothing running when you're
+not looking at it.
 
-Setting this up yourself by hand: the steps below. Having an AI coding agent (Claude Code or
-similar) do it for you instead: point it at `PROMPT.md`, which is written for that.
+## What you get
 
-```sh
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-```
+- **Home screen**: greeting, clock, date and weather; a dock of four apps over a rotating photo
+  wallpaper, with the full app grid below. One glass highlight glides between tiles.
+- **Live cricket**: India and IPL scores on the home screen (batters, bowler, result or next match),
+  and a small score card over the photo screensaver while a match is live. [More](#live-cricket)
+- **Kids mode**: only the apps you allow, everything else sent back home, PIN to leave.
+  [More](#kids-mode)
+- **Remote shortcuts**: the Red/Green/Yellow/Blue buttons open apps of your choice, the Apps
+  button opens the grid, and double-pressing Home jumps back to the last app.
+  [More](#colour-buttons-redgreenyellowblue)
+- **Soundbar that wakes with the TV**, fixing a common eARC/CEC annoyance. [More](#soundbar-wake-up)
+- **Inputs menu** for HDMI ports and Live TV, reorderable tiles, hidden tiles.
+- **Debloat**: 24 tracking, promo and unused apps disabled, with the reason for each.
+  [More](#what-gets-disabled)
+- **Settings without rebuilding**: edit `config.json`, run `./config.sh push`.
+  [More](#change-the-home-screen)
+- **Optional arcade look**: the whole home screen as an 8-bit arcade game: neon name tiles, pixel
+  font, maze-style dock with a chomper eating dots, CRT scanlines (off by default).
+  [Screenshot](#arcade-look)
+
+Built and tested on a Sony BRAVIA 4K VH2 (KD-55X80J, Android TV 12 / Google TV, SDK 31). Other
+Sony Android TV models should mostly work the same way, but package names and a few
+Sony-specific behaviours (noted below) may differ.
+
+## Quick start
+
+Using an AI coding agent (Claude Code or similar)? Point it at `PROMPT.md`, which is a step-by-step
+runbook written for that. By hand:
+
+1. On the TV: **Settings → System → About**, press the build number seven times to unlock
+   Developer options, then turn on **Developer options → Network debugging**. Note the TV's IP
+   from **Settings → Network → Status**.
+2. On your computer (building needs JDK 17 and an Android SDK, see
+   [Build environment](#build-environment-macos)):
+
+   ```sh
+   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+   export TV_IP=192.168.1.50            # your TV's IP
+   ./debloat.sh                         # disable the apps in debloat-list.txt
+   ./build-and-install.sh               # build, install, set as home, enable the button service
+   cp config.example.json config.json   # then set your weather location etc.
+   ./config.sh push
+   ```
+
+3. Accept the "Allow USB debugging?" prompt on the TV (it's the launcher's own key, used only for
+   the soundbar wake-up).
+
+Everything talks to the TV over Wi-Fi ADB through `./tv`, a small Python client
+(`adb-shell` package), because macOS Local Network privacy blocks the stock `adb` binary. Either
+export `TV_IP` once per shell or prefix commands (`TV_IP=192.168.1.50 ./tv shell ...`).
+
+To undo it all: `./restore.sh` (see [Undo everything](#undo-everything)).
 
 ## Files
 
 | File | What it does |
 |---|---|
-| `tv` | ADB helper: `./tv shell '<cmd>'`, `./tv key KEYCODE_X`, `./tv shot out.png`, `./tv push local remote` (base64 + md5), `./tv pull remote local`. Needs `TV_IP` set (see above). |
+| `tv` | ADB helper: `./tv shell '<cmd>'`, `./tv key KEYCODE_X`, `./tv shot out.png`, `./tv push local remote` (base64 + md5), `./tv pull remote local`. Needs `TV_IP` set. |
 | `debloat-list.txt` | The 24 packages disabled (with reasons). |
 | `never-disable.txt` | Packages the scripts must never disable (TV inputs, remote, keyboard, Play, Ambient Mode screensaver…). `debloat.sh` skips anything listed here. |
 | `debloat.sh` | Disables everything in `debloat-list.txt`, one `pm` call per shell session. |
 | `build-and-install.sh` | Builds the launcher, installs it, makes it the default home, enables the colour-button service. |
+| `config.sh` | Pushes `config.json` to the TV (`push`, `pull`, `reset`). |
 | `restore.sh` | Undoes everything (see below). |
 | `launcher/` | Source of the home screen app (`com.udesh.tvhome`). |
-
-## Undo everything
-
-```sh
-./restore.sh              # re-enable all apps + Google TV home, turn off the colour-button service
-./restore.sh --uninstall  # same, and remove the custom launcher
-```
-
-## Re-enable a single app
-
-```sh
-./tv shell 'pm enable --user 0 com.amazon.music.tv'
-```
-
-Package names and why each was disabled are in `debloat-list.txt`. To disable one again:
-`./tv shell 'pm disable-user --user 0 <package>'`.
-
-Disabled (24): Sony usage data (`idd.agent`), Samba TV viewing tracker, Sony usage tracking
-(`lastaccess`, `usercontext`), remote device agent (`qterics.da.product`, `da.service`),
-Sony promos / Sony Select / Sony tab / app auto-installer / retail demos / Vewd app store,
-Sony Music, Play Games, help guides, Sony ambient screensaver (`livingfit`, not your screensaver),
-Amazon Music, Gaana, Sony Pictures Core, Google TV (Movies), iTuner Radio.
-
-Also disabled so the custom home screen can be the default: `com.google.android.apps.tv.launcherx`
-(Google TV home), `com.sony.dtv.launcherxcustomizer`, and `com.google.android.tungsten.setupwraith`
-(Google's setup app, which has a higher-priority HOME screen that would otherwise always win).
-If you ever factory-reset, all of this is undone automatically.
+| `PROMPT.md` | Setup runbook for an AI coding agent. |
 
 ## Change the home screen
 
@@ -78,10 +99,7 @@ The built-in defaults are in `launcher/app/src/main/res/values/config.xml` (edit
   BRAVIA notifications, Media Player, TV, TV Control with Smart Speakers). Hiding only removes the
   tile; the apps keep working. Delete a line to bring a tile back.
 - **Wallpaper rotation**: `wallpaper_rotate_hours` (3).
-- **Arcade look** (off by default): `arcade_touches` (false). Greeting, clock, date and the big app name in the
-  8-bit Press Start 2P font (SIL OFL 1.1, `assets/fonts/PressStart2P-OFL.txt`), a little chomper
-  that runs along the top of the dock to the selected app eating dots, and a ghost next to the
-  weather. It only animates for a moment when you move; set `false` for the plain look.
+- **Arcade look** (off by default): `arcade_touches` (false). See [Arcade look](#arcade-look).
 - **Apps button**: `apps_button_opens_grid` (true).
 - **Colour buttons**: `key_red`, `key_green`, `key_yellow`, `key_blue`
   (now Hotstar, Apple TV, VLC, SonyLIV). Empty = the button does nothing special.
@@ -91,8 +109,28 @@ The built-in defaults are in `launcher/app/src/main/res/values/config.xml` (edit
 - **Weather location**: `weather_lat`, `weather_lon` (defaults to 0,0 — set to your own
   coordinates, e.g. search "&lt;your city&gt; latitude longitude").
   `weather_refresh_minutes` (30) and `weather_stale_minutes` (90, after which the row is dimmed).
+- **Cricket and kids mode**: see [Live cricket](#live-cricket) and [Kids mode](#kids-mode).
 
 To find an app's package name: `./tv shell 'pm list packages | grep -i <name>'`.
+
+### Arcade look
+
+![Arcade look](docs/arcade.png)
+
+Set `"arcade_touches": true` in `config.json` and `./config.sh push`. The whole home screen turns
+into an 8-bit arcade game:
+
+- App tiles become neon "marquee" tiles: the app's name in the Press Start 2P pixel font (SIL OFL
+  1.1, `assets/fonts/PressStart2P-OFL.txt`) inside a stepped pixel frame in the app's brand
+  colour, picked from its banner.
+- The dock sits in a double-line blue maze corridor, with a chomper that runs along the top to the
+  selected app eating dots. A yellow pixel frame marks the focused tile (green while reordering).
+- Clock, date, weather, buttons, the Inputs menu and the cricket card all use the pixel font and
+  blue frames; a ghost sits next to the weather.
+- Black background with faint CRT scanlines (wallpapers aren't shown in this look).
+
+It costs nothing when idle: frames and scanlines are drawn once, and the chomper only animates for
+a moment when you move. (The screenshot uses a sample score.)
 
 ### Wallpapers
 
@@ -131,7 +169,10 @@ format used for crediting photo sources if you pull from a licensed set like Uns
   bar and rows stop; Back returns to the dock. The last focused tile is remembered.
 - Light on memory: no blur, no video, no libraries beyond RecyclerView.
 
-## Reordering tiles
+**Live TV**: there are no tuner channels scanned on this TV, so "Live TV" opens Sony's TV app,
+which resumes the last source. After a channel scan it opens the tuner channels.
+
+### Reordering tiles
 
 Long-press OK/center on a dock or grid tile (the highlight turns gold) to pick it up, then use the
 D-pad to swap it with its neighbour. A short OK press, or Back, drops it in place. The new order is
@@ -140,20 +181,60 @@ rebuilds; only wiped by clearing the launcher's app data) and merges with `dock_
 alphabetical default — apps not seen before (newly installed, or before the first reorder) are
 appended at the end instead of being dropped.
 
-## Jump back to the last app
+### Jump back to the last app
 
 While sitting on the home screen, pressing Home again within ~0.65 s relaunches whichever app you
 most recently opened from the launcher (dock or grid), instead of just re-focusing the dock. Useful
 for "oops, meant to stay in what I was watching."
 
-Permissions: `INTERNET` (weather), network/Wi-Fi state, and `ACCESS_FINE_LOCATION`, used only
-because Android 12 hides the Wi-Fi network name without it. The weather uses fixed coordinates,
-never your location. Revoke it with
-`./tv shell 'pm revoke com.udesh.tvhome android.permission.ACCESS_FINE_LOCATION'`, and the pill
-will just say "Wi-Fi".
+## Live cricket
 
-**Live TV**: there are no tuner channels scanned on this TV, so "Live TV" opens Sony's TV app,
-which resumes the last source. After a channel scan it opens the tuner channels.
+A mini scorecard (top right of the home screen) for India men's matches and IPL: live score
+with the batters at the crease and the current bowler, the next match if it starts within 18
+hours, or the result for a while afterwards. Hidden when there's nothing to show. Data comes from
+ESPN's public cricket scoreboard (`site.web.api.espn.com`; no key, no daily limit). It only
+fetches while the home screen or screensaver is on screen: right away when you come Home (at most
+once a minute during a live match), every 4 min during a live match (5 on the screensaver) and
+every 30 min otherwise, plus one check right at an upcoming match's start. To go easy on a free
+feed: one request at a time, gzip (~9 KB scoreboard, ~22 KB match summary), tomorrow's fixtures
+read at most every 3 h, every 15 min while play is stopped (stumps, rain, breaks), and a 429/503
+from ESPN pauses fetching for at least 30 min. The feed is unofficial,
+so failures are soft: the last score stays, retries back off (1, 2, 4… min), a live score that
+hasn't updated for 10 min is dimmed with "Score from <time> · not updating", and it's hidden after
+an hour. National teams get flat flags bundled in the app (`res/drawable-nodpi/flag_*.png`,
+public-domain images from flagcdn.com); IPL teams and West Indies use ESPN's logo. Settings: `cricket_enabled`,
+`cricket_india_women`, `cricket_live_refresh_minutes`, `screensaver_cricket_refresh_minutes`,
+`cricket_idle_refresh_minutes`.
+
+While a match is live, a small score card also appears on the photo screensaver, just above
+Ambient Mode's own clock (`screensaver_overlay`). `screensaver_clock: true` draws our own big
+clock + date bottom-left instead (then turn Ambient Mode's clock off in its settings).
+
+## Kids mode
+
+Set `kids_pin` (exactly 4 digits) in `config.json` and push it; a **Kids** pill appears on the home
+screen. Kids mode shows only the apps in `kids_apps` (first four in the dock) and a **Parent** pill.
+While it is on, the colour-button service sends anything else that comes to the front (Settings,
+Play Store, other apps, HDMI inputs, Google Assistant) straight back home, ignores the Settings,
+Input and Assistant buttons, and colour buttons only open kids apps. Leaving needs the PIN (number
+buttons or the on-screen keypad; 5 wrong tries = 60 s wait). It stays on across TV restarts.
+`kids_name` optionally shows "Hi <name>!". Inside the apps, use each app's own kids profile and
+lock the adult profiles with that app's PIN (Netflix Profile Lock, Prime Video / JioHotstar
+parental PIN); use YouTube Kids rather than YouTube.
+
+## Colour buttons (Red/Green/Yellow/Blue)
+
+They are handled by a small accessibility service inside the launcher ("Home colour buttons").
+It filters only keycodes 183–186; every other key passes through untouched. It reads only which
+app is on screen, so it can leave the buttons alone in the Sony TV app, HbbTV and teletext.
+
+- Turn off: Settings → System → Accessibility → Home colour buttons, or
+  `./tv shell 'settings delete secure enabled_accessibility_services; settings put secure accessibility_enabled 0'`.
+- Turn on: `./build-and-install.sh`, or
+  `./tv shell 'settings put secure enabled_accessibility_services com.udesh.tvhome/.ColorKeyService; settings put secure accessibility_enabled 1'`.
+
+Note: `input keyevent` from ADB cannot test these buttons, because shell-injected keys skip
+accessibility filtering. Use the real remote.
 
 ## Apps button
 
@@ -182,66 +263,18 @@ with its own key (`SoundbarWaker.java`, which can run only that one fixed comman
 reconnects about 5-8 s later. It tries at most every 30 s, and backs off for 10 minutes if the
 soundbar doesn't respond (e.g. unplugged).
 
-**This needs network debugging to stay ON.** The first time the launcher runs after install, the TV
-shows an "Allow USB debugging?" prompt with the launcher's own key fingerprint — accept that one, and
-say No to any other such prompt you don't expect. If debugging is off, or the authorisation is
-revoked (Developer options → Revoke USB debugging authorisations), the launcher falls back to opening
-Sony's Home Theatre Control panel for about half a second, which also wakes the soundbar. After a
-revoke, reinstall with `./build-and-install.sh` and accept the new prompt.
+**This needs Developer options → Network debugging to stay ON.** The first time the launcher runs
+after install, the TV shows an "Allow USB debugging?" prompt with the launcher's own key
+fingerprint — accept that one, and say No to any other such prompt you don't expect. If debugging
+is off, or the authorisation is revoked (Developer options → Revoke USB debugging authorisations),
+everything else keeps working and the launcher falls back to opening Sony's Home Theatre Control
+panel for about half a second, which also wakes the soundbar. After a revoke, reinstall with
+`./build-and-install.sh` and accept the new prompt.
 
 Things that were tried and don't work for apps on Android 12: writing Sony's Speakers setting or
 calling Sony's audio service (Sony-only permissions), Android's system-audio setting toggle and
 volume nudges (ignored), and driving the quick-settings Audio output tile (it needs a real OK press,
 which accessibility services can only send from Android 13).
-
-## Colour buttons (Red/Green/Yellow/Blue)
-
-They are handled by a small accessibility service inside the launcher ("Home colour buttons").
-It filters only keycodes 183–186; every other key passes through untouched. It reads only which
-app is on screen, so it can leave the buttons alone in the Sony TV app, HbbTV and teletext.
-
-- Turn off: Settings → System → Accessibility → Home colour buttons, or
-  `./tv shell 'settings delete secure enabled_accessibility_services; settings put secure accessibility_enabled 0'`.
-- Turn on: `./build-and-install.sh`, or
-  `./tv shell 'settings put secure enabled_accessibility_services com.udesh.tvhome/.ColorKeyService; settings put secure accessibility_enabled 1'`.
-
-Note: `input keyevent` from ADB cannot test these buttons, because shell-injected keys skip
-accessibility filtering. Use the real remote.
-
-## Kids mode
-
-Set `kids_pin` (exactly 4 digits) in `config.json` and push it; a **Kids** pill appears on the home
-screen. Kids mode shows only the apps in `kids_apps` (first four in the dock) and a **Parent** pill.
-While it is on, the colour-button service sends anything else that comes to the front (Settings,
-Play Store, other apps, HDMI inputs, Google Assistant) straight back home, ignores the Settings,
-Input and Assistant buttons, and colour buttons only open kids apps. Leaving needs the PIN (number
-buttons or the on-screen keypad; 5 wrong tries = 60 s wait). It stays on across TV restarts.
-`kids_name` optionally shows "Hi <name>!". Inside the apps, use each app's own kids profile and
-lock the adult profiles with that app's PIN (Netflix Profile Lock, Prime Video / JioHotstar
-parental PIN); use YouTube Kids rather than YouTube.
-
-## Live cricket
-
-A mini scorecard (top right of the home screen) for India men's matches and IPL: live score
-with the batters at the crease and the current bowler, the next match if it starts within 18
-hours, or the result for a while afterwards. Hidden when there's nothing to show. Data comes from
-ESPN's public cricket scoreboard (`site.web.api.espn.com`; no key, no daily limit). It only
-fetches while the home screen or screensaver is on screen: right away when you come Home (at most
-once a minute during a live match), every 4 min during a live match (5 on the screensaver) and
-every 30 min otherwise, plus one check right at an upcoming match's start. To go easy on a free
-feed: one request at a time, gzip (~9 KB scoreboard, ~22 KB match summary), tomorrow's fixtures
-read at most every 3 h, every 15 min while play is stopped (stumps, rain, breaks), and a 429/503
-from ESPN pauses fetching for at least 30 min. The feed is unofficial,
-so failures are soft: the last score stays, retries back off (1, 2, 4… min), a live score that
-hasn't updated for 10 min is dimmed with "Score from <time> · not updating", and it's hidden after
-an hour. National teams get flat flags bundled in the app (`res/drawable-nodpi/flag_*.png`,
-public-domain images from flagcdn.com); IPL teams and West Indies use ESPN's logo. Settings: `cricket_enabled`,
-`cricket_india_women`, `cricket_live_refresh_minutes`, `screensaver_cricket_refresh_minutes`,
-`cricket_idle_refresh_minutes`.
-
-While a match is live, a small score card also appears on the photo screensaver, just above
-Ambient Mode's own clock (`screensaver_overlay`). `screensaver_clock: true` draws our own big
-clock + date bottom-left instead (then turn Ambient Mode's clock off in its settings).
 
 ## Screensaver (Google Photos / Ambient Mode)
 
@@ -254,14 +287,56 @@ Google Photos album of your choosing, starting after 10 minutes.
 - If the album ever needs picking again: in the **Google Home** app on your phone, tap the TV
   (Sony TV) → the gear (Device settings) → **Ambient mode** → **Google Photos** → select the album.
 
+## What gets disabled
+
+Disabled (24): Sony usage data (`idd.agent`), Samba TV viewing tracker, Sony usage tracking
+(`lastaccess`, `usercontext`), remote device agent (`qterics.da.product`, `da.service`),
+Sony promos / Sony Select / Sony tab / app auto-installer / retail demos / Vewd app store,
+Sony Music, Play Games, help guides, Sony ambient screensaver (`livingfit`, not your screensaver),
+Amazon Music, Gaana, Sony Pictures Core, Google TV (Movies), iTuner Radio. Package names and the
+reason for each are in `debloat-list.txt`.
+
+Also disabled so the custom home screen can be the default: `com.google.android.apps.tv.launcherx`
+(Google TV home), `com.sony.dtv.launcherxcustomizer`, and `com.google.android.tungsten.setupwraith`
+(Google's setup app, which has a higher-priority HOME screen that would otherwise always win).
+If you ever factory-reset, all of this is undone automatically.
+
+Re-enable a single app, or disable one again:
+
+```sh
+./tv shell 'pm enable --user 0 com.amazon.music.tv'
+./tv shell 'pm disable-user --user 0 <package>'
+```
+
+## Undo everything
+
+```sh
+./restore.sh              # re-enable all apps + Google TV home, turn off the colour-button service
+./restore.sh --uninstall  # same, and remove the custom launcher
+```
+
+## Privacy and permissions
+
+- Network is used only for the weather (Open-Meteo) and the cricket score (ESPN), and only while
+  the home screen or screensaver is on screen. No analytics, no accounts, no telemetry.
+- `INTERNET` and network/Wi-Fi state for the above.
+- `ACCESS_FINE_LOCATION`, used only because Android 12 hides the Wi-Fi network name without it.
+  The weather uses fixed coordinates from your config, never your location. Revoke it with
+  `./tv shell 'pm revoke com.udesh.tvhome android.permission.ACCESS_FINE_LOCATION'`, and the pill
+  will just say "Wi-Fi".
+- `READ_LOGS` for the Apps button (see [Apps button](#apps-button)), granted over ADB.
+- An accessibility service for the colour buttons, kids mode and the screensaver score card. It
+  sees which app is in front and the colour keys (plus, only in kids mode, the Settings, Input
+  and Assistant keys); every other key passes through.
+
 ## Build environment (macOS)
 
 JDK 17 (`brew install openjdk@17`), an Android SDK (platform 34, build-tools 34) with its path set
 in `launcher/local.properties` as `sdk.dir=/path/to/android-sdk` (not committed — Android Studio or
 `sdkmanager` can create one for you), Gradle 8.9 wrapper (bundled), AGP 8.5.2, `minSdk 31`.
 
-## Keep network debugging on
+## Credits and license
 
-The invisible soundbar wake-up (see "Soundbar wake-up") needs **Developer options → Network
-debugging** to stay on. If you ever turn it off, everything else keeps working — the soundbar
-wake-up just falls back to the half-second Sony panel instead.
+MIT (see `LICENSE`). Press Start 2P font: SIL OFL 1.1. Flags: public domain via flagcdn.com.
+Debloat list cross-checked with [cleanyourtv](https://github.com/Gathin23/cleanyourtv), where this
+TV's list is also published.
