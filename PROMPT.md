@@ -115,9 +115,15 @@ To preview the cricket card without a live match, write a sample `card` JSON int
   Ethernet) — scan the subnet for port 5555 before blaming network debugging.
 - Colour-key service dead after `am force-stop com.udesh.tvhome`: it only rebinds when
   `enabled_accessibility_services` is set to `''` and back (`./config.sh push` does this).
-- Photo screensaver black: Google's Ambient Mode problem, not ours — `pm trim-caches 999G`,
-  force-stop `com.google.android.apps.tv.dreamx` and `com.google.android.apps.mediashell`, else
-  re-link the album in the Google Home app.
+- Photo screensaver black: Google's Ambient Mode, not ours. Its photo URLs come back as Google's
+  sign-in page (logcat: Glide `Failed DecodePath`, `BackdropClient: JWT token not available`)
+  because it has no sign-in token; the token comes from the Cast service
+  (`com.google.android.apps.mediashell`, logcat `robot_account_auth_manager: Successfully initialized
+  JWT`). Fix: `pm trim-caches 999G`, force-stop mediashell, **wait about a minute** until Cast has
+  its JWT, then force-stop only `com.google.android.apps.tv.dreamx` and start the screensaver
+  (`am start -n com.android.systemui/.Somnambulator`). Restarting both at once can leave the
+  screensaver without a token. Re-enabling Google TV home (launcherx) does not help (tested
+  2026-10-25). Last resort: re-link the album in the Google Home app.
 - Sony picture/sound settings are signature-locked (no `settings`/content provider access); the
   only way is driving the menu with `input keyevent` while the human has it open, screenshot
   after every step, and never pressing Left/Right on an item you haven't read.
