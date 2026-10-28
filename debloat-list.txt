@@ -40,3 +40,9 @@ com.sony.dtv.gestureapp
 com.sonyericsson.dlna
 com.sony.huey.dlna.module
 com.sony.huey.dlna.renderersettings
+# --- added 2026-10-28 from CleanYourTV v3.1 VH2 list
+# Sony cloud smart-home agent (Firebase push, "register TV"); ran all the time, ~89 MB RAM.
+# Off means Alexa / Google Home app control via Sony cloud may stop; on-TV Assistant and Cast are separate.
+com.sony.dtv.seeds.iot
+# Kept on purpose: com.sony.dtv.seeds.iot.remotestart (only the "Remote start" consent pop-up; never runs).
+# Kept on purpose: com.google.android.youtube.tvmusic (the remote has a YouTube Music button; never runs in the background).
