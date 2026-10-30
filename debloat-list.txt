@@ -46,3 +46,7 @@ com.sony.huey.dlna.renderersettings
 com.sony.dtv.seeds.iot
 # Kept on purpose: com.sony.dtv.seeds.iot.remotestart (only the "Remote start" consent pop-up; never runs).
 # Kept on purpose: com.google.android.youtube.tvmusic (the remote has a YouTube Music button; never runs in the background).
+# --- added 2026-10-30 from CleanYourTV's VH21 list: BRAVIA CAM services (this set has no camera)
+com.sony.dtv.sensingcamera.fwupdate
+com.sony.dtv.sensingcamera.settings
+com.sony.dtv.distancealert
