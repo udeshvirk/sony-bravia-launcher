@@ -171,8 +171,10 @@ final class Cricket {
     /** The card to show now, or null if the feed couldn't be read (the cached card then stays). */
     private Data load(long now, boolean women, long idle) throws Exception {
         Data old = cached();
-        // 1) a live match we already know about: just its summary (1 request)
-        if (old != null && old.state == LIVE && now - prefs.getLong("scanTime", 0) < idle) {
+        // 1) a live match we already know about: just its summary (1 request); an exhibition
+        //    match is rescanned every time so the main India side takes over as soon as it plays
+        if (old != null && old.state == LIVE && !prefs.getBoolean("minor", false)
+                && now - prefs.getLong("scanTime", 0) < idle) {
             Data d = summary(old.id);
             if (d != null) return d;
         }
@@ -192,7 +194,7 @@ final class Cricket {
                 if (r < bestRank) { bestRank = r; best = tomorrow.getJSONObject(i); }
             }
         }
-        prefs.edit().putLong("scanTime", now).apply();
+        prefs.edit().putLong("scanTime", now).putBoolean("minor", best != null && best.optBoolean("minor")).apply();
         if (best == null) return new Data();
         int state = best.getInt("state");
         if (state == UPCOMING) return build(best, null);
@@ -298,7 +300,8 @@ final class Cricket {
                 .put("league", str(lg, "name"))
                 .put("status", fs == null ? "" : str(fs, "summary"))
                 .put("paused", fs != null && paused(fs.optJSONObject("type")))
-                .put("batting", fs == null ? "" : str(fs, "battingTeamId"));
+                .put("batting", fs == null ? "" : str(fs, "battingTeamId"))
+                .put("minor", minor(ev.optJSONObject("class")));
         JSONArray teams = new JSONArray();
         for (int i = 0; i < 2; i++) {
             JSONObject c = cs.getJSONObject(i);
@@ -333,6 +336,13 @@ final class Cricket {
                     .put("abbr", str(team, "abbreviation")).put("score", str(t, "score")).put("logo", logo));
         }
         return m.put("teams", teams);
+    }
+
+    /** ESPN files exhibition events (Hong Kong Sixes, tour games) as "Other ..." matches. */
+    private static boolean minor(JSONObject cls) {
+        if (cls == null) return false;
+        return cls.optString("generalClassCard").trim().toLowerCase(Locale.ROOT).startsWith("other")
+                || cls.optString("name").trim().toLowerCase(Locale.ROOT).startsWith("other");
     }
 
     /** Live but play has stopped: ESPN then says "Stumps", "Lunch", "Rain", "Innings break"... instead of "Live". */
@@ -373,7 +383,8 @@ final class Cricket {
     private static int rank(JSONObject m, boolean women, long now) {
         boolean india = india(m, women);
         if (!india && !ipl(m)) return Integer.MAX_VALUE;
-        int pref = india ? 0 : 1;
+        // the main India side first, then IPL, then India in an exhibition event (e.g. Hong Kong Sixes)
+        int pref = !india ? 1 : m.optBoolean("minor") ? 2 : 0;
         long start = m.optLong("start");
         int state = m.optInt("state");
         if (state == LIVE) return pref;
